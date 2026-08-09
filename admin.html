@@ -97,13 +97,13 @@
   .delete-btn:hover{background:var(--coral);color:var(--paper);border-color:var(--coral);}
   .delete-btn:disabled{opacity:0.5;cursor:not-allowed;}
 
-  .edit-btn{
+  .edit-btn, .edit-product-btn{
     font-family:'JetBrains Mono', monospace;font-size:0.72rem;
     border:1px solid var(--line);color:var(--paper);
     background:none;padding:6px 14px;border-radius:100px;cursor:pointer;
     transition:all .2s ease;
   }
-  .edit-btn:hover{border-color:var(--paper);}
+  .edit-btn:hover, .edit-product-btn:hover{border-color:var(--paper);}
 
   .file-input-wrap{
     border:1px dashed var(--line);border-radius:10px;padding:16px;text-align:center;
@@ -186,7 +186,7 @@
   </div>
 
   <div class="panel">
-    <div class="section-title">Nuovo prodotto</div>
+    <div class="section-title" id="productFormTitle">Nuovo prodotto</div>
     <label>Brand</label>
     <select id="productBrand"></select>
     <div class="row">
@@ -202,10 +202,14 @@
     <label>Descrizione</label>
     <textarea id="productDescription" placeholder="Materiali, dettagli, taglie..."></textarea>
     <label>Foto prodotto</label>
+    <p id="currentProductPhotoNote" style="display:none;font-size:0.8rem;color:rgba(244,242,237,0.5);margin-bottom:8px;">Foto attuale caricata — seleziona un file solo se vuoi sostituirla.</p>
     <div class="file-input-wrap" id="fileWrap">
       <input type="file" id="productImage" accept="image/*" style="width:auto;border:none;">
     </div>
-    <button class="primary" id="saveProductBtn">Salva prodotto</button>
+    <div style="display:flex;gap:12px;align-items:center;">
+      <button class="primary" id="saveProductBtn" style="flex:1;">Salva prodotto</button>
+      <button id="cancelProductEditBtn" style="display:none;background:none;border:1px solid var(--line);color:var(--paper);border-radius:100px;padding:14px 22px;font-family:'JetBrains Mono', monospace;font-size:0.8rem;cursor:pointer;white-space:nowrap;">Annulla</button>
+    </div>
     <p class="msg" id="productMsg"></p>
   </div>
 
@@ -494,7 +498,49 @@
     }
   });
 
-  // ---------- SALVA PRODOTTO ----------
+  // ---------- STATO MODIFICA PRODOTTO ----------
+  let editingProductId = null;
+  let editingProductImageUrl = null;
+
+  const productFormTitle = document.getElementById('productFormTitle');
+  const currentProductPhotoNote = document.getElementById('currentProductPhotoNote');
+  const cancelProductEditBtn = document.getElementById('cancelProductEditBtn');
+  const saveProductBtn = document.getElementById('saveProductBtn');
+
+  function enterProductEditMode(product){
+    editingProductId = product.id;
+    editingProductImageUrl = product.image_url || null;
+
+    document.getElementById('productBrand').value = product.brand_id;
+    document.getElementById('productName').value = product.name || '';
+    document.getElementById('productPrice').value = product.price !== null && product.price !== undefined ? product.price : '';
+    document.getElementById('productDescription').value = product.description || '';
+    document.getElementById('productImage').value = '';
+
+    productFormTitle.textContent = `Modifica prodotto — ${product.name}`;
+    saveProductBtn.textContent = 'Aggiorna prodotto';
+    cancelProductEditBtn.style.display = 'inline-block';
+    currentProductPhotoNote.style.display = product.image_url ? 'block' : 'none';
+
+    document.getElementById('productBrand').closest('.panel').scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+
+  function exitProductEditMode(){
+    editingProductId = null;
+    editingProductImageUrl = null;
+
+    ['productName','productPrice','productDescription'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('productImage').value = '';
+
+    productFormTitle.textContent = 'Nuovo prodotto';
+    saveProductBtn.textContent = 'Salva prodotto';
+    cancelProductEditBtn.style.display = 'none';
+    currentProductPhotoNote.style.display = 'none';
+  }
+
+  cancelProductEditBtn.addEventListener('click', exitProductEditMode);
+
+  // ---------- SALVA / AGGIORNA PRODOTTO ----------
   document.getElementById('saveProductBtn').addEventListener('click', async () => {
     const brand_id = document.getElementById('productBrand').value;
     const name = document.getElementById('productName').value.trim();
@@ -512,9 +558,11 @@
     msg.style.color = 'rgba(244,242,237,0.6)';
     msg.textContent = 'Salvataggio...';
 
-    let image_url = null;
+    const isEditing = !!editingProductId;
 
     try {
+      let image_url = undefined; // undefined = non toccare il campo in update mode
+
       if(fileInput.files.length > 0){
         const file = fileInput.files[0];
         const path = `${brand_id}/${Date.now()}-${file.name}`;
@@ -522,17 +570,35 @@
         if(uploadError) throw uploadError;
         const { data: urlData } = supabaseClient.storage.from('brand-images').getPublicUrl(path);
         image_url = urlData.publicUrl;
+
+        // Se stavamo sostituendo una foto esistente, elimina il vecchio file
+        if(isEditing && editingProductImageUrl){
+          await removeStorageFiles([editingProductImageUrl]);
+        }
       }
 
-      const { error } = await supabaseClient.from('products').insert({
-        brand_id, name, price: price || null, description, image_url
-      });
-      if(error) throw error;
+      if(isEditing){
+        const payload = { brand_id, name, price: price || null, description };
+        if(image_url !== undefined) payload.image_url = image_url;
 
-      msg.style.color = 'var(--gold)';
-      msg.textContent = 'Prodotto salvato!';
-      ['productName','productPrice','productDescription'].forEach(id => document.getElementById(id).value = '');
-      fileInput.value = '';
+        const { error } = await supabaseClient.from('products').update(payload).eq('id', editingProductId);
+        if(error) throw error;
+
+        msg.style.color = 'var(--gold)';
+        msg.textContent = 'Prodotto aggiornato!';
+        exitProductEditMode();
+      } else {
+        const { error } = await supabaseClient.from('products').insert({
+          brand_id, name, price: price || null, description, image_url: image_url || null
+        });
+        if(error) throw error;
+
+        msg.style.color = 'var(--gold)';
+        msg.textContent = 'Prodotto salvato!';
+        ['productName','productPrice','productDescription'].forEach(id => document.getElementById(id).value = '');
+        fileInput.value = '';
+      }
+
       loadProducts();
     } catch(err){
       msg.style.color = 'var(--coral)';
@@ -544,7 +610,7 @@
   async function loadProducts(){
     const { data, error } = await supabaseClient
       .from('products')
-      .select('id, name, price, image_url, brands(name)')
+      .select('id, name, price, description, image_url, brand_id, brands(name)')
       .order('created_at', { ascending: false });
     if(error) return;
 
@@ -558,13 +624,20 @@
         : '—';
       const price = product.price !== null && product.price !== undefined ? '€ ' + Number(product.price).toFixed(2) : '—';
       const brandName = product.brands ? product.brands.name : '—';
-      tr.innerHTML = `<td>${photoCell}</td><td>${product.name}</td><td>${brandName}</td><td>${price}</td><td><button class="delete-btn" data-id="${product.id}" data-name="${product.name.replace(/"/g,'&quot;')}" data-image="${product.image_url || ''}">Elimina</button></td>`;
+      tr.innerHTML = `<td>${photoCell}</td><td>${product.name}</td><td>${brandName}</td><td>${price}</td><td style="display:flex;gap:8px;"><button class="edit-product-btn" data-product='${JSON.stringify(product).replace(/'/g,"&apos;")}'>Modifica</button><button class="delete-btn" data-id="${product.id}" data-name="${product.name.replace(/"/g,'&quot;')}" data-image="${product.image_url || ''}">Elimina</button></td>`;
       tbody.appendChild(tr);
     });
   }
 
-  // ---------- ELIMINA PRODOTTO ----------
+  // ---------- MODIFICA / ELIMINA PRODOTTO ----------
   document.getElementById('productsTableBody').addEventListener('click', async (e) => {
+    const editBtn = e.target.closest('.edit-product-btn');
+    if(editBtn){
+      const product = JSON.parse(editBtn.dataset.product.replace(/&apos;/g, "'"));
+      enterProductEditMode(product);
+      return;
+    }
+
     const btn = e.target.closest('.delete-btn');
     if(!btn) return;
 
@@ -584,6 +657,8 @@
 
       const { error } = await supabaseClient.from('products').delete().eq('id', id);
       if(error) throw error;
+
+      if(editingProductId === id) exitProductEditMode();
 
       loadProducts();
     } catch(err){
