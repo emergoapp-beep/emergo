@@ -156,6 +156,10 @@
         <input type="url" id="brandInstagram" placeholder="https://instagram.com/...">
       </div>
     </div>
+    <label>Logo brand (mostrato nella card in vetrina)</label>
+    <div class="file-input-wrap" id="logoFileWrap">
+      <input type="file" id="brandLogo" accept="image/*" style="width:auto;border:none;">
+    </div>
     <button class="primary" id="saveBrandBtn">Salva brand</button>
     <p class="msg" id="brandMsg"></p>
   </div>
@@ -188,7 +192,7 @@
     <div class="section-title">I tuoi brand</div>
     <table id="brandsTable">
       <thead>
-        <tr><th>Nome</th><th>Città</th><th>Stato</th></tr>
+        <tr><th>Logo</th><th>Nome</th><th>Città</th><th>Stato</th></tr>
       </thead>
       <tbody id="brandsTableBody"></tbody>
     </table>
@@ -258,6 +262,7 @@
     const story = document.getElementById('brandStory').value.trim();
     const shop_url = document.getElementById('brandShop').value.trim();
     const instagram_url = document.getElementById('brandInstagram').value.trim();
+    const logoInput = document.getElementById('brandLogo');
     const msg = document.getElementById('brandMsg');
 
     if(!name){
@@ -271,18 +276,31 @@
 
     const slug = slugify(name) + '-' + Math.random().toString(36).slice(2,6);
 
-    const { error } = await supabaseClient.from('brands').insert({
-      name, city, category, status, story, shop_url, instagram_url, slug
-    });
+    try {
+      let logo_url = null;
 
-    if(error){
-      msg.style.color = 'var(--coral)';
-      msg.textContent = 'Errore: ' + error.message;
-    } else {
+      if(logoInput.files.length > 0){
+        const file = logoInput.files[0];
+        const path = `logos/${slug}-${Date.now()}-${file.name}`;
+        const { error: uploadError } = await supabaseClient.storage.from('brand-images').upload(path, file);
+        if(uploadError) throw uploadError;
+        const { data: urlData } = supabaseClient.storage.from('brand-images').getPublicUrl(path);
+        logo_url = urlData.publicUrl;
+      }
+
+      const { error } = await supabaseClient.from('brands').insert({
+        name, city, category, status, story, shop_url, instagram_url, slug, logo_url
+      });
+      if(error) throw error;
+
       msg.style.color = 'var(--gold)';
       msg.textContent = 'Brand salvato!';
       ['brandName','brandCity','brandCategory','brandStory','brandShop','brandInstagram'].forEach(id => document.getElementById(id).value = '');
+      logoInput.value = '';
       loadBrands();
+    } catch(err){
+      msg.style.color = 'var(--coral)';
+      msg.textContent = 'Errore: ' + err.message;
     }
   });
 
@@ -298,7 +316,10 @@
 
     data.forEach(brand => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${brand.name}</td><td>${brand.city || '—'}</td><td><span class="badge ${brand.status}">${brand.status}</span></td>`;
+      const logoCell = brand.logo_url
+        ? `<img src="${brand.logo_url}" alt="${brand.name}" style="width:36px;height:36px;object-fit:contain;border-radius:8px;background:var(--ink);padding:4px;">`
+        : '—';
+      tr.innerHTML = `<td>${logoCell}</td><td>${brand.name}</td><td>${brand.city || '—'}</td><td><span class="badge ${brand.status}">${brand.status}</span></td>`;
       tbody.appendChild(tr);
 
       const opt = document.createElement('option');

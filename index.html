@@ -241,6 +241,133 @@
     object-fit:cover;
     display:block;
   }
+
+  /* Logo header on the brand card, replaces the product photo */
+  .card-logo-wrap{
+    width:100%;
+    height:160px;
+    display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 30% 20%, rgba(61,90,255,0.25), transparent 60%),
+               radial-gradient(circle at 80% 80%, rgba(255,77,109,0.2), transparent 55%),
+               var(--surface);
+    border-bottom:1px solid var(--line);
+    position:relative;
+  }
+  .card-logo-wrap img{
+    max-width:62%;
+    max-height:60%;
+    object-fit:contain;
+    filter:drop-shadow(0 4px 14px rgba(0,0,0,0.35));
+  }
+  .card-logo-fallback{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:2.6rem;
+    letter-spacing:0.02em;
+    color:rgba(244,242,237,0.85);
+  }
+  .card-logo-wrap .see-products{
+    position:absolute;
+    bottom:10px;right:14px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.65rem;
+    letter-spacing:0.06em;
+    color:rgba(244,242,237,0.55);
+    display:flex;align-items:center;gap:6px;
+  }
+  .card-logo-wrap .see-products::after{content:'↗';}
+
+  /* ---------- PRODUCT MODAL ---------- */
+  .modal-overlay{
+    position:fixed;inset:0;
+    background:rgba(8,8,10,0.75);
+    backdrop-filter:blur(6px);
+    display:none;
+    align-items:flex-start;justify-content:center;
+    padding:8vh 5vw 5vh;
+    z-index:1000;
+    overflow-y:auto;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-panel{
+    background:linear-gradient(160deg, var(--surface-2), var(--surface));
+    border:1px solid var(--line);
+    border-radius:24px;
+    max-width:840px;width:100%;
+    padding:36px;
+    position:relative;
+  }
+  .modal-close{
+    position:absolute;top:20px;right:20px;
+    width:38px;height:38px;border-radius:50%;
+    border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.2rem;cursor:pointer;
+    background:var(--ink);color:var(--paper);
+    transition:all .2s ease;
+  }
+  .modal-close:hover{border-color:var(--paper);transform:rotate(90deg);}
+  .modal-head{
+    display:flex;gap:20px;align-items:center;
+    margin-bottom:28px;padding-right:50px;
+  }
+  .modal-head img{
+    width:64px;height:64px;object-fit:contain;
+    background:var(--ink);border-radius:14px;padding:8px;
+    border:1px solid var(--line);
+  }
+  .modal-head-fallback{
+    width:64px;height:64px;border-radius:14px;
+    background:var(--ink);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Bebas Neue', sans-serif;font-size:1.6rem;
+  }
+  .modal-head h3{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:2.2rem;letter-spacing:0.01em;line-height:1;
+  }
+  .modal-head p{
+    color:rgba(244,242,237,0.6);
+    font-size:0.85rem;margin-top:6px;
+    font-family:'JetBrains Mono', monospace;
+  }
+  .modal-links{
+    display:flex;gap:14px;margin-bottom:28px;flex-wrap:wrap;
+  }
+  .modal-links a{
+    font-family:'JetBrains Mono', monospace;font-size:0.75rem;
+    border:1px solid var(--line);padding:8px 16px;border-radius:100px;
+    transition:all .2s ease;
+  }
+  .modal-links a:hover{border-color:var(--paper);}
+  .product-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(180px,1fr));
+    gap:18px;
+  }
+  .product-item{
+    background:var(--ink);
+    border:1px solid var(--line);
+    border-radius:16px;
+    overflow:hidden;
+    display:flex;flex-direction:column;
+  }
+  .product-item img{
+    width:100%;height:150px;object-fit:cover;display:block;
+    background:var(--surface);
+  }
+  .product-item-body{padding:14px 16px 16px;flex:1;display:flex;flex-direction:column;gap:6px;}
+  .product-item-body .pname{font-weight:600;font-size:0.95rem;}
+  .product-item-body .pprice{
+    font-family:'JetBrains Mono', monospace;
+    color:var(--gold);font-size:0.9rem;
+  }
+  .product-item-body .pdesc{
+    font-size:0.8rem;color:rgba(244,242,237,0.6);line-height:1.45;
+  }
+  .modal-empty{
+    color:rgba(244,242,237,0.5);
+    font-family:'JetBrains Mono', monospace;font-size:0.85rem;
+  }
   .card-body{
     padding:20px 24px 24px;
     display:flex;flex-direction:column;justify-content:space-between;
@@ -476,6 +603,15 @@
   </div>
 </section>
 
+<div class="modal-overlay" id="productModal">
+  <div class="modal-panel">
+    <div class="modal-close" id="modalClose">&times;</div>
+    <div class="modal-head" id="modalHead"></div>
+    <div class="modal-links" id="modalLinks"></div>
+    <div class="product-grid" id="modalProducts"></div>
+  </div>
+</div>
+
 <footer>
   <div class="logo">EMERGO</div>
   <div class="foot-links">
@@ -552,7 +688,7 @@
     const grid = document.getElementById('cardGrid');
     const { data: brands, error } = await supabaseClient
       .from('brands')
-      .select('id, name, city, category, story, products(image_url)')
+      .select('id, name, city, category, story, shop_url, instagram_url, logo_url, products(id, name, price, description, image_url)')
       .eq('status', 'active')
       .order('created_at', { ascending: false });
 
@@ -564,11 +700,18 @@
     grid.innerHTML = '';
     brands.forEach((brand, i) => {
       const dropNumber = String(i + 1).padStart(2, '0');
-      const image = brand.products && brand.products.length > 0 ? brand.products[0].image_url : null;
+      const initials = brand.name ? brand.name.trim().slice(0, 2).toUpperCase() : '?';
+      const productCount = brand.products ? brand.products.length : 0;
+
       const card = document.createElement('div');
       card.className = 'card';
       card.innerHTML = `
-        ${image ? `<img class="card-image" src="${image}" alt="${brand.name}">` : ''}
+        <div class="card-logo-wrap">
+          ${brand.logo_url
+            ? `<img src="${brand.logo_url}" alt="${brand.name}">`
+            : `<span class="card-logo-fallback">${initials}</span>`}
+          <span class="see-products">${productCount} prodott${productCount === 1 ? 'o' : 'i'}</span>
+        </div>
         <div class="card-body">
           <div>
             <span class="drop">DROP ${dropNumber}</span>
@@ -578,12 +721,77 @@
           <div class="tag"><span>${brand.category || 'Moda'}</span><span>Nuovo</span></div>
         </div>
       `;
+      card.addEventListener('click', () => openBrandModal(brand));
       grid.appendChild(card);
       applyTilt(card);
     });
   }
 
   loadBrandGrid();
+
+  // ---------- MODAL PRODOTTI BRAND ----------
+  const productModal = document.getElementById('productModal');
+  const modalHead = document.getElementById('modalHead');
+  const modalLinks = document.getElementById('modalLinks');
+  const modalProducts = document.getElementById('modalProducts');
+  const modalClose = document.getElementById('modalClose');
+
+  function formatPrice(price){
+    if(price === null || price === undefined || price === '') return '';
+    const n = Number(price);
+    return isNaN(n) ? '' : '€ ' + n.toFixed(2);
+  }
+
+  function openBrandModal(brand){
+    const initials = brand.name ? brand.name.trim().slice(0, 2).toUpperCase() : '?';
+
+    modalHead.innerHTML = `
+      ${brand.logo_url
+        ? `<img src="${brand.logo_url}" alt="${brand.name}">`
+        : `<div class="modal-head-fallback">${initials}</div>`}
+      <div>
+        <h3>${brand.name.toUpperCase()}</h3>
+        <p>${[brand.category, brand.city].filter(Boolean).join(' · ')}</p>
+      </div>
+    `;
+
+    modalLinks.innerHTML = `
+      ${brand.shop_url ? `<a href="${brand.shop_url}" target="_blank" rel="noopener">Vai allo shop →</a>` : ''}
+      ${brand.instagram_url ? `<a href="${brand.instagram_url}" target="_blank" rel="noopener">Instagram →</a>` : ''}
+    `;
+
+    const products = brand.products || [];
+    if(products.length === 0){
+      modalProducts.innerHTML = `<p class="modal-empty">Nessun prodotto caricato ancora — presto arrivano i primi pezzi.</p>`;
+    } else {
+      modalProducts.innerHTML = products.map(p => `
+        <div class="product-item">
+          ${p.image_url ? `<img src="${p.image_url}" alt="${p.name}">` : ''}
+          <div class="product-item-body">
+            <span class="pname">${p.name}</span>
+            ${p.price !== null && p.price !== undefined ? `<span class="pprice">${formatPrice(p.price)}</span>` : ''}
+            ${p.description ? `<span class="pdesc">${p.description}</span>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    productModal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeBrandModal(){
+    productModal.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  modalClose.addEventListener('click', closeBrandModal);
+  productModal.addEventListener('click', (e) => {
+    if(e.target === productModal) closeBrandModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape') closeBrandModal();
+  });
 
   // Waitlist toggle
   let currentType = 'utente';
