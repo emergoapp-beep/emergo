@@ -227,24 +227,15 @@
     border:1px solid var(--line);
     border-radius:20px;
     padding:0;
-    height:340px;
-    display:flex;flex-direction:column;justify-content:space-between;
+    height:260px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
     position:relative;
     transform-style:preserve-3d;
     transition: transform .15s ease-out, border-color .3s ease;
     cursor:pointer;
     overflow:hidden;
-  }
-  .card-image{
-    width:100%;
-    height:160px;
-    object-fit:cover;
-    display:block;
-  }
-  .card-body{
-    padding:20px 24px 24px;
-    display:flex;flex-direction:column;justify-content:space-between;
-    flex:1;
+    text-align:center;
+    gap:16px;
   }
   .card:hover{border-color:rgba(244,242,237,0.35);}
 
@@ -258,31 +249,85 @@
   }
   .card:hover::before{opacity:1;}
 
-  .card .drop{
-    font-family:'JetBrains Mono', monospace;
-    font-size:0.7rem;
-    letter-spacing:0.1em;
-    color:var(--gold);
+  .card-logo{
+    width:84px;height:84px;
+    border-radius:50%;
+    object-fit:cover;
+    border:1px solid var(--line);
+  }
+  .card-logo-placeholder{
+    width:84px;height:84px;
+    border-radius:50%;
+    background:var(--ink);
+    border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Bebas Neue', sans-serif;
+    font-size:1.7rem;
+    color:rgba(244,242,237,0.4);
   }
   .card h3{
     font-family:'Bebas Neue', sans-serif;
-    font-size:2.4rem;
+    font-size:1.8rem;
     letter-spacing:0.01em;
-    line-height:1;
   }
-  .card p{
-    font-size:0.88rem;
-    color:rgba(244,242,237,0.6);
-    line-height:1.5;
-  }
-  .card .tag{
+  .card .drop{
     font-family:'JetBrains Mono', monospace;
-    font-size:0.7rem;
-    color:rgba(244,242,237,0.45);
-    border-top:1px solid var(--line);
-    padding-top:14px;
-    display:flex;justify-content:space-between;
+    font-size:0.68rem;
+    letter-spacing:0.1em;
+    color:var(--gold);
   }
+
+  /* ---------- BRAND MODAL ---------- */
+  .modal-overlay{
+    position:fixed;inset:0;
+    background:rgba(14,14,18,0.85);
+    backdrop-filter:blur(6px);
+    z-index:200;
+    display:none;
+    align-items:flex-start;justify-content:center;
+    padding:60px 6vw;
+    overflow-y:auto;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-box{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:24px;
+    max-width:720px;width:100%;
+    padding:40px;
+    position:relative;
+    animation: modalIn 0.35s cubic-bezier(.2,.8,.2,1);
+  }
+  @keyframes modalIn{
+    from{opacity:0;transform:translateY(20px);}
+    to{opacity:1;transform:translateY(0);}
+  }
+  .modal-close{
+    position:absolute;top:24px;right:24px;
+    width:36px;height:36px;border-radius:50%;
+    background:var(--surface-2);border:1px solid var(--line);
+    color:var(--paper);font-size:1.1rem;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  .modal-close:hover{background:var(--coral);}
+  .modal-header{display:flex;align-items:center;gap:20px;margin-bottom:24px;}
+  .modal-header img, .modal-header .card-logo-placeholder{width:64px;height:64px;}
+  .modal-header h2{font-family:'Bebas Neue', sans-serif;font-size:2.4rem;}
+  .modal-header p{color:rgba(244,242,237,0.55);font-size:0.85rem;font-family:'JetBrains Mono', monospace;}
+  .modal-story{color:rgba(244,242,237,0.75);line-height:1.6;margin-bottom:32px;}
+  .modal-links{display:flex;gap:12px;margin-bottom:32px;}
+  .drops-grid{
+    display:grid;grid-template-columns:repeat(auto-fit, minmax(180px,1fr));
+    gap:16px;
+  }
+  .drop-card{
+    background:var(--ink);border:1px solid var(--line);border-radius:14px;
+    overflow:hidden;
+  }
+  .drop-card img{width:100%;height:140px;object-fit:cover;display:block;}
+  .drop-card-body{padding:14px;}
+  .drop-card-body h4{font-size:0.95rem;font-weight:600;margin-bottom:4px;}
+  .drop-card-body .drop-price{font-family:'JetBrains Mono', monospace;font-size:0.8rem;color:var(--gold);}
 
   /* ---------- FOR BRANDS ---------- */
   .brand-section{
@@ -397,6 +442,13 @@
   <div class="logo">EMERGO</div>
   <a href="#waitlist" class="nav-cta">Entra in vetrina</a>
 </nav>
+
+<div class="modal-overlay" id="brandModal">
+  <div class="modal-box">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
 
 <header class="hero">
   <div class="blob" id="blob"></div>
@@ -547,12 +599,14 @@
     });
   }
 
-  // Carica i brand attivi dal database e li mostra in griglia
+  // Carica i brand attivi dal database e li mostra in griglia (solo logo + nome)
+  let allBrands = [];
+
   async function loadBrandGrid(){
     const grid = document.getElementById('cardGrid');
     const { data: brands, error } = await supabaseClient
       .from('brands')
-      .select('id, name, city, category, story, products(image_url)')
+      .select('id, name, city, category, story, logo_url, shop_url, instagram_url')
       .eq('status', 'active')
       .order('created_at', { ascending: false });
 
@@ -561,27 +615,85 @@
       return;
     }
 
+    allBrands = brands;
     grid.innerHTML = '';
     brands.forEach((brand, i) => {
       const dropNumber = String(i + 1).padStart(2, '0');
-      const image = brand.products && brand.products.length > 0 ? brand.products[0].image_url : null;
+      const initials = brand.name.slice(0, 2).toUpperCase();
       const card = document.createElement('div');
       card.className = 'card';
       card.innerHTML = `
-        ${image ? `<img class="card-image" src="${image}" alt="${brand.name}">` : ''}
-        <div class="card-body">
-          <div>
-            <span class="drop">DROP ${dropNumber}</span>
-            <h3>${brand.name.toUpperCase()}</h3>
-            <p>${brand.story ? brand.story.slice(0, 90) : ''}${brand.city ? ' ' + brand.city + '.' : ''}</p>
-          </div>
-          <div class="tag"><span>${brand.category || 'Moda'}</span><span>Nuovo</span></div>
-        </div>
+        <span class="drop">DROP ${dropNumber}</span>
+        ${brand.logo_url
+          ? `<img class="card-logo" src="${brand.logo_url}" alt="${brand.name}">`
+          : `<div class="card-logo-placeholder">${initials}</div>`}
+        <h3>${brand.name.toUpperCase()}</h3>
       `;
+      card.addEventListener('click', () => openBrandModal(brand.id));
       grid.appendChild(card);
       applyTilt(card);
     });
   }
+
+  // Apre il modal con i drop (prodotti) del brand selezionato
+  async function openBrandModal(brandId){
+    const brand = allBrands.find(b => b.id === brandId);
+    if(!brand) return;
+
+    const modal = document.getElementById('brandModal');
+    const content = document.getElementById('modalContent');
+
+    content.innerHTML = `
+      <div class="modal-header">
+        ${brand.logo_url
+          ? `<img src="${brand.logo_url}" alt="${brand.name}" style="border-radius:50%;object-fit:cover;">`
+          : `<div class="card-logo-placeholder">${brand.name.slice(0,2).toUpperCase()}</div>`}
+        <div>
+          <h2>${brand.name}</h2>
+          <p>${brand.category || 'Moda'}${brand.city ? ' · ' + brand.city : ''}</p>
+        </div>
+      </div>
+      <p class="modal-story">${brand.story || ''}</p>
+      <div class="modal-links">
+        ${brand.shop_url ? `<a href="${brand.shop_url}" target="_blank" rel="noopener" class="btn btn-primary">Vai allo shop</a>` : ''}
+        ${brand.instagram_url ? `<a href="${brand.instagram_url}" target="_blank" rel="noopener" class="btn btn-ghost">Instagram</a>` : ''}
+      </div>
+      <div class="drops-grid" id="dropsGrid">
+        <p style="color:rgba(244,242,237,0.5); font-family:'JetBrains Mono', monospace; font-size:0.8rem;">Caricamento drop...</p>
+      </div>
+    `;
+
+    modal.classList.add('open');
+
+    const { data: products, error } = await supabaseClient
+      .from('products')
+      .select('name, description, price, image_url')
+      .eq('brand_id', brandId)
+      .order('created_at', { ascending: false });
+
+    const dropsGrid = document.getElementById('dropsGrid');
+    if(error || !products || products.length === 0){
+      dropsGrid.innerHTML = `<p style="color:rgba(244,242,237,0.5); font-family:'JetBrains Mono', monospace; font-size:0.8rem;">Nessun drop pubblicato ancora.</p>`;
+      return;
+    }
+
+    dropsGrid.innerHTML = products.map(p => `
+      <div class="drop-card">
+        ${p.image_url ? `<img src="${p.image_url}" alt="${p.name}">` : ''}
+        <div class="drop-card-body">
+          <h4>${p.name}</h4>
+          ${p.price ? `<span class="drop-price">€${Number(p.price).toFixed(2)}</span>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('modalClose').addEventListener('click', () => {
+    document.getElementById('brandModal').classList.remove('open');
+  });
+  document.getElementById('brandModal').addEventListener('click', (e) => {
+    if(e.target.id === 'brandModal') e.target.classList.remove('open');
+  });
 
   loadBrandGrid();
 

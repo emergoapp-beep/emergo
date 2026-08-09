@@ -88,49 +88,11 @@
   .badge.draft{background:rgba(244,242,237,0.1);color:rgba(244,242,237,0.6);}
   .badge.expired{background:rgba(255,77,109,0.15);color:var(--coral);}
 
-  .delete-btn{
-    font-family:'JetBrains Mono', monospace;font-size:0.72rem;
-    border:1px solid rgba(255,77,109,0.4);color:var(--coral);
-    background:none;padding:6px 14px;border-radius:100px;cursor:pointer;
-    transition:all .2s ease;
-  }
-  .delete-btn:hover{background:var(--coral);color:var(--paper);border-color:var(--coral);}
-  .delete-btn:disabled{opacity:0.5;cursor:not-allowed;}
-
-  .edit-btn, .edit-product-btn{
-    font-family:'JetBrains Mono', monospace;font-size:0.72rem;
-    border:1px solid var(--line);color:var(--paper);
-    background:none;padding:6px 14px;border-radius:100px;cursor:pointer;
-    transition:all .2s ease;
-  }
-  .edit-btn:hover, .edit-product-btn:hover{border-color:var(--paper);}
-
   .file-input-wrap{
     border:1px dashed var(--line);border-radius:10px;padding:16px;text-align:center;
     font-size:0.85rem;color:rgba(244,242,237,0.6);cursor:pointer;
   }
   .file-input-wrap:hover{border-color:var(--paper);}
-
-  .stats-row{
-    display:grid;grid-template-columns:repeat(auto-fit, minmax(160px,1fr));gap:16px;
-  }
-  .stat-card{
-    background:var(--ink);border:1px solid var(--line);border-radius:16px;
-    padding:20px;display:flex;flex-direction:column;gap:6px;
-  }
-  .stat-label{
-    font-family:'JetBrains Mono', monospace;font-size:0.68rem;
-    text-transform:uppercase;letter-spacing:0.05em;color:rgba(244,242,237,0.5);
-  }
-  .stat-value{font-family:'Bebas Neue', sans-serif;font-size:2.2rem;}
-
-  .filter-btn{
-    font-family:'JetBrains Mono', monospace;font-size:0.75rem;
-    border:1px solid var(--line);background:none;color:rgba(244,242,237,0.6);
-    padding:8px 16px;border-radius:100px;cursor:pointer;transition:all .2s ease;
-  }
-  .filter-btn.active{background:var(--paper);color:var(--ink);border-color:var(--paper);}
-  .filter-btn:hover:not(.active){border-color:var(--paper);}
 </style>
 </head>
 <body>
@@ -158,7 +120,7 @@
 <div id="dashboard">
 
   <div class="panel">
-    <div class="section-title" id="brandFormTitle">Nuovo brand</div>
+    <div class="section-title">Nuovo brand</div>
     <div class="row">
       <div>
         <label>Nome brand</label>
@@ -184,6 +146,10 @@
     </div>
     <label>Storia / descrizione breve</label>
     <textarea id="brandStory" placeholder="Chi sono, cosa fanno, cosa li rende diversi..."></textarea>
+    <label>Logo brand</label>
+    <div class="file-input-wrap" id="logoFileWrap">
+      <input type="file" id="brandLogo" accept="image/*" style="width:auto;border:none;">
+    </div>
     <div class="row">
       <div>
         <label>Link shop</label>
@@ -194,20 +160,12 @@
         <input type="url" id="brandInstagram" placeholder="https://instagram.com/...">
       </div>
     </div>
-    <label>Logo brand (mostrato nella card in vetrina)</label>
-    <p id="currentLogoNote" style="display:none;font-size:0.8rem;color:rgba(244,242,237,0.5);margin-bottom:8px;">Logo attuale caricato — seleziona un file solo se vuoi sostituirlo.</p>
-    <div class="file-input-wrap" id="logoFileWrap">
-      <input type="file" id="brandLogo" accept="image/*" style="width:auto;border:none;">
-    </div>
-    <div style="display:flex;gap:12px;align-items:center;">
-      <button class="primary" id="saveBrandBtn" style="flex:1;">Salva brand</button>
-      <button id="cancelEditBtn" style="display:none;background:none;border:1px solid var(--line);color:var(--paper);border-radius:100px;padding:14px 22px;font-family:'JetBrains Mono', monospace;font-size:0.8rem;cursor:pointer;white-space:nowrap;">Annulla</button>
-    </div>
+    <button class="primary" id="saveBrandBtn">Salva brand</button>
     <p class="msg" id="brandMsg"></p>
   </div>
 
   <div class="panel">
-    <div class="section-title" id="productFormTitle">Nuovo prodotto</div>
+    <div class="section-title">Nuovo prodotto</div>
     <label>Brand</label>
     <select id="productBrand"></select>
     <div class="row">
@@ -223,14 +181,10 @@
     <label>Descrizione</label>
     <textarea id="productDescription" placeholder="Materiali, dettagli, taglie..."></textarea>
     <label>Foto prodotto</label>
-    <p id="currentProductPhotoNote" style="display:none;font-size:0.8rem;color:rgba(244,242,237,0.5);margin-bottom:8px;">Foto attuale caricata — seleziona un file solo se vuoi sostituirla.</p>
     <div class="file-input-wrap" id="fileWrap">
       <input type="file" id="productImage" accept="image/*" style="width:auto;border:none;">
     </div>
-    <div style="display:flex;gap:12px;align-items:center;">
-      <button class="primary" id="saveProductBtn" style="flex:1;">Salva prodotto</button>
-      <button id="cancelProductEditBtn" style="display:none;background:none;border:1px solid var(--line);color:var(--paper);border-radius:100px;padding:14px 22px;font-family:'JetBrains Mono', monospace;font-size:0.8rem;cursor:pointer;white-space:nowrap;">Annulla</button>
-    </div>
+    <button class="primary" id="saveProductBtn">Salva prodotto</button>
     <p class="msg" id="productMsg"></p>
   </div>
 
@@ -238,71 +192,10 @@
     <div class="section-title">I tuoi brand</div>
     <table id="brandsTable">
       <thead>
-        <tr><th>Logo</th><th>Nome</th><th>Città</th><th>Stato</th><th>Azioni</th></tr>
+        <tr><th>Nome</th><th>Città</th><th>Stato</th></tr>
       </thead>
       <tbody id="brandsTableBody"></tbody>
     </table>
-  </div>
-
-  <div class="panel">
-    <div class="section-title">I tuoi prodotti</div>
-    <table id="productsTable">
-      <thead>
-        <tr><th>Foto</th><th>Nome</th><th>Brand</th><th>Prezzo</th><th>Azioni</th></tr>
-      </thead>
-      <tbody id="productsTableBody"></tbody>
-    </table>
-  </div>
-
-  <div class="panel">
-    <div class="section-title">Newsletter</div>
-    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
-      <button class="filter-btn active" data-filter="all">Tutti</button>
-      <button class="filter-btn" data-filter="utente">Utenti</button>
-      <button class="filter-btn" data-filter="brand">Brand</button>
-      <span id="waitlistCount" style="margin-left:auto;font-family:'JetBrains Mono', monospace;font-size:0.78rem;color:rgba(244,242,237,0.5);"></span>
-      <button id="exportWaitlistBtn" style="font-family:'JetBrains Mono', monospace;font-size:0.72rem;border:1px solid var(--line);background:none;color:var(--paper);padding:8px 16px;border-radius:100px;cursor:pointer;">Esporta CSV</button>
-    </div>
-    <table id="waitlistTable">
-      <thead>
-        <tr><th>Email</th><th>Tipo</th><th>Iscritto il</th><th>Azioni</th></tr>
-      </thead>
-      <tbody id="waitlistTableBody"></tbody>
-    </table>
-  </div>
-
-  <div class="panel">
-    <div class="section-title">Analytics</div>
-    <div class="stats-row">
-      <div class="stat-card">
-        <span class="stat-label">Visite totali</span>
-        <span class="stat-value" id="statTotalViews">—</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-label">Visite oggi</span>
-        <span class="stat-value" id="statTodayViews">—</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-label">Click sui brand</span>
-        <span class="stat-value" id="statTotalClicks">—</span>
-      </div>
-    </div>
-    <div class="row" style="margin-top:24px;align-items:start;">
-      <div>
-        <label style="margin-bottom:10px;">Brand più cliccati</label>
-        <table id="topBrandsTable">
-          <thead><tr><th>Brand</th><th>Click</th></tr></thead>
-          <tbody id="topBrandsTableBody"></tbody>
-        </table>
-      </div>
-      <div>
-        <label style="margin-bottom:10px;">Pagine più visitate</label>
-        <table id="topPagesTable">
-          <thead><tr><th>Pagina</th><th>Visite</th></tr></thead>
-          <tbody id="topPagesTableBody"></tbody>
-        </table>
-      </div>
-    </div>
   </div>
 
 </div>
@@ -321,24 +214,6 @@
       .replace(/[^\w\s-]/g, '')
       .replace(/[\s_-]+/g, '-')
       .replace(/^-+|-+$/g, '');
-  }
-
-  const STORAGE_BUCKET = 'brand-images';
-
-  // Estrae il path interno al bucket da un public URL di Supabase Storage
-  function storagePathFromUrl(url){
-    if(!url) return null;
-    const marker = `/object/public/${STORAGE_BUCKET}/`;
-    const idx = url.indexOf(marker);
-    if(idx === -1) return null;
-    return decodeURIComponent(url.slice(idx + marker.length));
-  }
-
-  async function removeStorageFiles(urls){
-    const paths = urls.map(storagePathFromUrl).filter(Boolean);
-    if(paths.length === 0) return;
-    const { error } = await supabaseClient.storage.from(STORAGE_BUCKET).remove(paths);
-    if(error) console.warn('Pulizia storage non riuscita per alcuni file:', error.message);
   }
 
   // ---------- LOGIN ----------
@@ -376,61 +251,9 @@
     dashboard.style.display = 'block';
     logoutBtn.style.display = 'inline-block';
     loadBrands();
-    loadProducts();
-    loadWaitlist();
-    loadAnalytics();
   }
 
-  // ---------- STATO MODIFICA BRAND ----------
-  let editingBrandId = null;
-  let editingBrandSlug = null;
-  let editingBrandLogoUrl = null;
-
-  const brandFormTitle = document.getElementById('brandFormTitle');
-  const currentLogoNote = document.getElementById('currentLogoNote');
-  const cancelEditBtn = document.getElementById('cancelEditBtn');
-  const saveBrandBtn = document.getElementById('saveBrandBtn');
-
-  function enterEditMode(brand){
-    editingBrandId = brand.id;
-    editingBrandSlug = brand.slug;
-    editingBrandLogoUrl = brand.logo_url || null;
-
-    document.getElementById('brandName').value = brand.name || '';
-    document.getElementById('brandCity').value = brand.city || '';
-    document.getElementById('brandCategory').value = brand.category || '';
-    document.getElementById('brandStatus').value = brand.status || 'draft';
-    document.getElementById('brandStory').value = brand.story || '';
-    document.getElementById('brandShop').value = brand.shop_url || '';
-    document.getElementById('brandInstagram').value = brand.instagram_url || '';
-    document.getElementById('brandLogo').value = '';
-
-    brandFormTitle.textContent = `Modifica brand — ${brand.name}`;
-    saveBrandBtn.textContent = 'Aggiorna brand';
-    cancelEditBtn.style.display = 'inline-block';
-    currentLogoNote.style.display = brand.logo_url ? 'block' : 'none';
-
-    document.getElementById('brandName').closest('.panel').scrollIntoView({ behavior:'smooth', block:'start' });
-  }
-
-  function exitEditMode(){
-    editingBrandId = null;
-    editingBrandSlug = null;
-    editingBrandLogoUrl = null;
-
-    ['brandName','brandCity','brandCategory','brandStory','brandShop','brandInstagram'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('brandStatus').value = 'draft';
-    document.getElementById('brandLogo').value = '';
-
-    brandFormTitle.textContent = 'Nuovo brand';
-    saveBrandBtn.textContent = 'Salva brand';
-    cancelEditBtn.style.display = 'none';
-    currentLogoNote.style.display = 'none';
-  }
-
-  cancelEditBtn.addEventListener('click', exitEditMode);
-
-  // ---------- SALVA / AGGIORNA BRAND ----------
+  // ---------- SALVA BRAND ----------
   document.getElementById('saveBrandBtn').addEventListener('click', async () => {
     const name = document.getElementById('brandName').value.trim();
     const city = document.getElementById('brandCity').value.trim();
@@ -451,48 +274,28 @@
     msg.style.color = 'rgba(244,242,237,0.6)';
     msg.textContent = 'Salvataggio...';
 
-    const isEditing = !!editingBrandId;
-    const slugForUpload = isEditing ? editingBrandSlug : (slugify(name) + '-' + Math.random().toString(36).slice(2,6));
+    const slug = slugify(name) + '-' + Math.random().toString(36).slice(2,6);
 
     try {
-      let logo_url = undefined; // undefined = non toccare il campo in update mode
-
+      let logo_url = null;
       if(logoInput.files.length > 0){
         const file = logoInput.files[0];
-        const path = `logos/${slugForUpload}-${Date.now()}-${file.name}`;
+        const path = `logos/${slug}-${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabaseClient.storage.from('brand-images').upload(path, file);
         if(uploadError) throw uploadError;
         const { data: urlData } = supabaseClient.storage.from('brand-images').getPublicUrl(path);
         logo_url = urlData.publicUrl;
-
-        // Se stavamo sostituendo un logo esistente, elimina il vecchio file
-        if(isEditing && editingBrandLogoUrl){
-          await removeStorageFiles([editingBrandLogoUrl]);
-        }
       }
 
-      if(isEditing){
-        const payload = { name, city, category, status, story, shop_url, instagram_url };
-        if(logo_url !== undefined) payload.logo_url = logo_url;
+      const { error } = await supabaseClient.from('brands').insert({
+        name, city, category, status, story, shop_url, instagram_url, slug, logo_url
+      });
+      if(error) throw error;
 
-        const { error } = await supabaseClient.from('brands').update(payload).eq('id', editingBrandId);
-        if(error) throw error;
-
-        msg.style.color = 'var(--gold)';
-        msg.textContent = 'Brand aggiornato!';
-        exitEditMode();
-      } else {
-        const { error } = await supabaseClient.from('brands').insert({
-          name, city, category, status, story, shop_url, instagram_url, slug: slugForUpload, logo_url: logo_url || null
-        });
-        if(error) throw error;
-
-        msg.style.color = 'var(--gold)';
-        msg.textContent = 'Brand salvato!';
-        ['brandName','brandCity','brandCategory','brandStory','brandShop','brandInstagram'].forEach(id => document.getElementById(id).value = '');
-        logoInput.value = '';
-      }
-
+      msg.style.color = 'var(--gold)';
+      msg.textContent = 'Brand salvato!';
+      ['brandName','brandCity','brandCategory','brandStory','brandShop','brandInstagram'].forEach(id => document.getElementById(id).value = '');
+      logoInput.value = '';
       loadBrands();
     } catch(err){
       msg.style.color = 'var(--coral)';
@@ -512,10 +315,7 @@
 
     data.forEach(brand => {
       const tr = document.createElement('tr');
-      const logoCell = brand.logo_url
-        ? `<img src="${brand.logo_url}" alt="${brand.name}" style="width:36px;height:36px;object-fit:contain;border-radius:8px;background:var(--ink);padding:4px;">`
-        : '—';
-      tr.innerHTML = `<td>${logoCell}</td><td>${brand.name}</td><td>${brand.city || '—'}</td><td><span class="badge ${brand.status}">${brand.status}</span></td><td style="display:flex;gap:8px;"><button class="edit-btn" data-brand='${JSON.stringify(brand).replace(/'/g,"&apos;")}'>Modifica</button><button class="delete-btn" data-id="${brand.id}" data-name="${brand.name.replace(/"/g,'&quot;')}">Elimina</button></td>`;
+      tr.innerHTML = `<td>${brand.name}</td><td>${brand.city || '—'}</td><td><span class="badge ${brand.status}">${brand.status}</span></td>`;
       tbody.appendChild(tr);
 
       const opt = document.createElement('option');
@@ -525,96 +325,7 @@
     });
   }
 
-  // ---------- MODIFICA / ELIMINA BRAND ----------
-  document.getElementById('brandsTableBody').addEventListener('click', async (e) => {
-    const editBtn = e.target.closest('.edit-btn');
-    if(editBtn){
-      const brand = JSON.parse(editBtn.dataset.brand.replace(/&apos;/g, "'"));
-      enterEditMode(brand);
-      return;
-    }
-
-    const btn = e.target.closest('.delete-btn');
-    if(!btn) return;
-
-    const id = btn.dataset.id;
-    const name = btn.dataset.name;
-
-    if(!confirm(`Eliminare "${name}"? Verranno eliminati anche tutti i suoi prodotti e i relativi file (logo, foto). L'azione non è reversibile.`)){
-      return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = 'Elimino...';
-
-    try {
-      // Recupera logo e foto prodotti da rimuovere dallo storage prima di cancellare le righe
-      const { data: brandRow } = await supabaseClient.from('brands').select('logo_url').eq('id', id).single();
-      const { data: productRows } = await supabaseClient.from('products').select('image_url').eq('brand_id', id);
-
-      const urlsToRemove = [];
-      if(brandRow && brandRow.logo_url) urlsToRemove.push(brandRow.logo_url);
-      if(productRows) productRows.forEach(p => { if(p.image_url) urlsToRemove.push(p.image_url); });
-
-      await removeStorageFiles(urlsToRemove);
-
-      const { error } = await supabaseClient.from('brands').delete().eq('id', id);
-      if(error) throw error;
-
-      if(editingBrandId === id) exitEditMode();
-
-      loadBrands();
-      loadProducts();
-    } catch(err){
-      alert('Errore durante l\'eliminazione: ' + err.message);
-      btn.disabled = false;
-      btn.textContent = 'Elimina';
-    }
-  });
-
-  // ---------- STATO MODIFICA PRODOTTO ----------
-  let editingProductId = null;
-  let editingProductImageUrl = null;
-
-  const productFormTitle = document.getElementById('productFormTitle');
-  const currentProductPhotoNote = document.getElementById('currentProductPhotoNote');
-  const cancelProductEditBtn = document.getElementById('cancelProductEditBtn');
-  const saveProductBtn = document.getElementById('saveProductBtn');
-
-  function enterProductEditMode(product){
-    editingProductId = product.id;
-    editingProductImageUrl = product.image_url || null;
-
-    document.getElementById('productBrand').value = product.brand_id;
-    document.getElementById('productName').value = product.name || '';
-    document.getElementById('productPrice').value = product.price !== null && product.price !== undefined ? product.price : '';
-    document.getElementById('productDescription').value = product.description || '';
-    document.getElementById('productImage').value = '';
-
-    productFormTitle.textContent = `Modifica prodotto — ${product.name}`;
-    saveProductBtn.textContent = 'Aggiorna prodotto';
-    cancelProductEditBtn.style.display = 'inline-block';
-    currentProductPhotoNote.style.display = product.image_url ? 'block' : 'none';
-
-    document.getElementById('productBrand').closest('.panel').scrollIntoView({ behavior:'smooth', block:'start' });
-  }
-
-  function exitProductEditMode(){
-    editingProductId = null;
-    editingProductImageUrl = null;
-
-    ['productName','productPrice','productDescription'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('productImage').value = '';
-
-    productFormTitle.textContent = 'Nuovo prodotto';
-    saveProductBtn.textContent = 'Salva prodotto';
-    cancelProductEditBtn.style.display = 'none';
-    currentProductPhotoNote.style.display = 'none';
-  }
-
-  cancelProductEditBtn.addEventListener('click', exitProductEditMode);
-
-  // ---------- SALVA / AGGIORNA PRODOTTO ----------
+  // ---------- SALVA PRODOTTO ----------
   document.getElementById('saveProductBtn').addEventListener('click', async () => {
     const brand_id = document.getElementById('productBrand').value;
     const name = document.getElementById('productName').value.trim();
@@ -632,11 +343,9 @@
     msg.style.color = 'rgba(244,242,237,0.6)';
     msg.textContent = 'Salvataggio...';
 
-    const isEditing = !!editingProductId;
+    let image_url = null;
 
     try {
-      let image_url = undefined; // undefined = non toccare il campo in update mode
-
       if(fileInput.files.length > 0){
         const file = fileInput.files[0];
         const path = `${brand_id}/${Date.now()}-${file.name}`;
@@ -644,215 +353,22 @@
         if(uploadError) throw uploadError;
         const { data: urlData } = supabaseClient.storage.from('brand-images').getPublicUrl(path);
         image_url = urlData.publicUrl;
-
-        // Se stavamo sostituendo una foto esistente, elimina il vecchio file
-        if(isEditing && editingProductImageUrl){
-          await removeStorageFiles([editingProductImageUrl]);
-        }
       }
 
-      if(isEditing){
-        const payload = { brand_id, name, price: price || null, description };
-        if(image_url !== undefined) payload.image_url = image_url;
+      const { error } = await supabaseClient.from('products').insert({
+        brand_id, name, price: price || null, description, image_url
+      });
+      if(error) throw error;
 
-        const { error } = await supabaseClient.from('products').update(payload).eq('id', editingProductId);
-        if(error) throw error;
-
-        msg.style.color = 'var(--gold)';
-        msg.textContent = 'Prodotto aggiornato!';
-        exitProductEditMode();
-      } else {
-        const { error } = await supabaseClient.from('products').insert({
-          brand_id, name, price: price || null, description, image_url: image_url || null
-        });
-        if(error) throw error;
-
-        msg.style.color = 'var(--gold)';
-        msg.textContent = 'Prodotto salvato!';
-        ['productName','productPrice','productDescription'].forEach(id => document.getElementById(id).value = '');
-        fileInput.value = '';
-      }
-
-      loadProducts();
+      msg.style.color = 'var(--gold)';
+      msg.textContent = 'Prodotto salvato!';
+      ['productName','productPrice','productDescription'].forEach(id => document.getElementById(id).value = '');
+      fileInput.value = '';
     } catch(err){
       msg.style.color = 'var(--coral)';
       msg.textContent = 'Errore: ' + err.message;
     }
   });
-
-  // ---------- CARICA PRODOTTI ----------
-  async function loadProducts(){
-    const { data, error } = await supabaseClient
-      .from('products')
-      .select('id, name, price, description, image_url, brand_id, brands(name)')
-      .order('created_at', { ascending: false });
-    if(error) return;
-
-    const tbody = document.getElementById('productsTableBody');
-    tbody.innerHTML = '';
-
-    data.forEach(product => {
-      const tr = document.createElement('tr');
-      const photoCell = product.image_url
-        ? `<img src="${product.image_url}" alt="${product.name}" style="width:36px;height:36px;object-fit:cover;border-radius:8px;">`
-        : '—';
-      const price = product.price !== null && product.price !== undefined ? '€ ' + Number(product.price).toFixed(2) : '—';
-      const brandName = product.brands ? product.brands.name : '—';
-      tr.innerHTML = `<td>${photoCell}</td><td>${product.name}</td><td>${brandName}</td><td>${price}</td><td style="display:flex;gap:8px;"><button class="edit-product-btn" data-product='${JSON.stringify(product).replace(/'/g,"&apos;")}'>Modifica</button><button class="delete-btn" data-id="${product.id}" data-name="${product.name.replace(/"/g,'&quot;')}" data-image="${product.image_url || ''}">Elimina</button></td>`;
-      tbody.appendChild(tr);
-    });
-  }
-
-  // ---------- MODIFICA / ELIMINA PRODOTTO ----------
-  document.getElementById('productsTableBody').addEventListener('click', async (e) => {
-    const editBtn = e.target.closest('.edit-product-btn');
-    if(editBtn){
-      const product = JSON.parse(editBtn.dataset.product.replace(/&apos;/g, "'"));
-      enterProductEditMode(product);
-      return;
-    }
-
-    const btn = e.target.closest('.delete-btn');
-    if(!btn) return;
-
-    const id = btn.dataset.id;
-    const name = btn.dataset.name;
-    const image = btn.dataset.image;
-
-    if(!confirm(`Eliminare il prodotto "${name}"? La foto verrà rimossa definitivamente. L'azione non è reversibile.`)){
-      return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = 'Elimino...';
-
-    try {
-      if(image) await removeStorageFiles([image]);
-
-      const { error } = await supabaseClient.from('products').delete().eq('id', id);
-      if(error) throw error;
-
-      if(editingProductId === id) exitProductEditMode();
-
-      loadProducts();
-    } catch(err){
-      alert('Errore durante l\'eliminazione: ' + err.message);
-      btn.disabled = false;
-      btn.textContent = 'Elimina';
-    }
-  });
-
-  // ---------- NEWSLETTER / WAITLIST ----------
-  let waitlistData = [];
-  let waitlistFilter = 'all';
-
-  async function loadWaitlist(){
-    const { data, error } = await supabaseClient
-      .from('waitlist')
-      .select('id, email, type, created_at')
-      .order('created_at', { ascending: false });
-    if(error) return;
-    waitlistData = data;
-    renderWaitlist();
-  }
-
-  function renderWaitlist(){
-    const tbody = document.getElementById('waitlistTableBody');
-    const countEl = document.getElementById('waitlistCount');
-    const filtered = waitlistFilter === 'all' ? waitlistData : waitlistData.filter(w => w.type === waitlistFilter);
-
-    countEl.textContent = `${filtered.length} iscritt${filtered.length === 1 ? 'o' : 'i'}`;
-    tbody.innerHTML = '';
-
-    filtered.forEach(entry => {
-      const tr = document.createElement('tr');
-      const date = new Date(entry.created_at).toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' });
-      tr.innerHTML = `<td>${entry.email}</td><td><span class="badge ${entry.type === 'brand' ? 'active' : 'draft'}">${entry.type}</span></td><td>${date}</td><td><button class="delete-btn" data-id="${entry.id}" data-email="${entry.email}">Elimina</button></td>`;
-      tbody.appendChild(tr);
-    });
-  }
-
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      waitlistFilter = btn.dataset.filter;
-      renderWaitlist();
-    });
-  });
-
-  document.getElementById('waitlistTableBody').addEventListener('click', async (e) => {
-    const btn = e.target.closest('.delete-btn');
-    if(!btn) return;
-
-    const id = btn.dataset.id;
-    const email = btn.dataset.email;
-
-    if(!confirm(`Rimuovere "${email}" dalla newsletter?`)) return;
-
-    btn.disabled = true;
-    btn.textContent = 'Elimino...';
-
-    const { error } = await supabaseClient.from('waitlist').delete().eq('id', id);
-    if(error){
-      alert('Errore durante l\'eliminazione: ' + error.message);
-      btn.disabled = false;
-      btn.textContent = 'Elimina';
-    } else {
-      loadWaitlist();
-    }
-  });
-
-  document.getElementById('exportWaitlistBtn').addEventListener('click', () => {
-    if(waitlistData.length === 0) return;
-    const rows = [['email','tipo','iscritto_il'], ...waitlistData.map(w => [w.email, w.type, w.created_at])];
-    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `emergo-newsletter-${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  });
-
-  // ---------- ANALYTICS ----------
-  async function loadAnalytics(){
-    const { data, error } = await supabaseClient
-      .from('analytics_events')
-      .select('event_type, page, brand_name, created_at')
-      .order('created_at', { ascending: false })
-      .limit(5000);
-    if(error) return;
-
-    const pageViews = data.filter(e => e.event_type === 'page_view');
-    const brandClicks = data.filter(e => e.event_type === 'brand_click');
-
-    const todayStr = new Date().toDateString();
-    const todayViews = pageViews.filter(e => new Date(e.created_at).toDateString() === todayStr);
-
-    document.getElementById('statTotalViews').textContent = pageViews.length;
-    document.getElementById('statTodayViews').textContent = todayViews.length;
-    document.getElementById('statTotalClicks').textContent = brandClicks.length;
-
-    // Top pagine
-    const pageCounts = {};
-    pageViews.forEach(e => { const p = e.page || '(sconosciuta)'; pageCounts[p] = (pageCounts[p] || 0) + 1; });
-    const topPages = Object.entries(pageCounts).sort((a,b) => b[1] - a[1]).slice(0, 10);
-    const topPagesBody = document.getElementById('topPagesTableBody');
-    topPagesBody.innerHTML = topPages.length
-      ? topPages.map(([page, count]) => `<tr><td>${page}</td><td>${count}</td></tr>`).join('')
-      : `<tr><td colspan="2" style="color:rgba(244,242,237,0.5);">Nessun dato ancora.</td></tr>`;
-
-    // Top brand cliccati
-    const brandCounts = {};
-    brandClicks.forEach(e => { const b = e.brand_name || '(sconosciuto)'; brandCounts[b] = (brandCounts[b] || 0) + 1; });
-    const topBrands = Object.entries(brandCounts).sort((a,b) => b[1] - a[1]).slice(0, 10);
-    const topBrandsBody = document.getElementById('topBrandsTableBody');
-    topBrandsBody.innerHTML = topBrands.length
-      ? topBrands.map(([name, count]) => `<tr><td>${name}</td><td>${count}</td></tr>`).join('')
-      : `<tr><td colspan="2" style="color:rgba(244,242,237,0.5);">Nessun dato ancora.</td></tr>`;
-  }
 
   checkSession();
 </script>
