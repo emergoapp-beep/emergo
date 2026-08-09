@@ -422,31 +422,8 @@
     <span class="eyebrow">In vetrina questa settimana</span>
     <h2>Nuovi drop, prima che li trovi altrove.</h2>
   </div>
-  <div class="grid reveal" id="cardGrid">
-    <div class="card" data-tilt>
-      <span class="drop">DROP 01</span>
-      <h3>NERO STUDIO</h3>
-      <p>Capispalla essenziali, tagli netti. Milano.</p>
-      <div class="tag"><span>Streetwear</span><span>Nuovo</span></div>
-    </div>
-    <div class="card" data-tilt>
-      <span class="drop">DROP 02</span>
-      <h3>ALBA WORKSHOP</h3>
-      <p>Maglieria fatta a mano, piccoli lotti. Firenze.</p>
-      <div class="tag"><span>Knitwear</span><span>Limited</span></div>
-    </div>
-    <div class="card" data-tilt>
-      <span class="drop">DROP 03</span>
-      <h3>OSSO</h3>
-      <p>Denim riciclato, silhouette oversize. Napoli.</p>
-      <div class="tag"><span>Denim</span><span>Eco</span></div>
-    </div>
-    <div class="card" data-tilt>
-      <span class="drop">DROP 04</span>
-      <h3>VESPRO</h3>
-      <p>Camicie sartoriali reinventate. Bologna.</p>
-      <div class="tag"><span>Camiceria</span><span>Nuovo</span></div>
-    </div>
+  <div class="grid reveal visible" id="cardGrid">
+    <p style="color:rgba(244,242,237,0.5); font-family:'JetBrains Mono', monospace; font-size:0.85rem;">Caricamento brand...</p>
   </div>
 </section>
 
@@ -539,6 +516,57 @@
   const SUPABASE_URL = 'https://wuvtvcxneilbcfxauzeq.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_u5W20O0Amb-qANK5bYppSg_O_zvIecL';
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Applica l'effetto tilt 3D a una card (usato sia per quelle statiche che per quelle caricate)
+  function applyTilt(card){
+    card.addEventListener('mousemove', (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+      const rotateX = ((y - cy) / cy) * -8;
+      const rotateY = ((x - cx) / cx) * 8;
+      card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(10px)`;
+      card.style.setProperty('--mx', `${(x/rect.width)*100}%`);
+      card.style.setProperty('--my', `${(y/rect.height)*100}%`);
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = 'rotateX(0) rotateY(0) translateZ(0)';
+    });
+  }
+
+  // Carica i brand attivi dal database e li mostra in griglia
+  async function loadBrandGrid(){
+    const grid = document.getElementById('cardGrid');
+    const { data: brands, error } = await supabaseClient
+      .from('brands')
+      .select('id, name, city, category, story')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+
+    if(error || !brands || brands.length === 0){
+      grid.innerHTML = `<p style="color:rgba(244,242,237,0.5); font-family:'JetBrains Mono', monospace; font-size:0.85rem;">I primi brand arrivano a breve — iscriviti alla waitlist per essere avvisato.</p>`;
+      return;
+    }
+
+    grid.innerHTML = '';
+    brands.forEach((brand, i) => {
+      const dropNumber = String(i + 1).padStart(2, '0');
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <span class="drop">DROP ${dropNumber}</span>
+        <h3>${brand.name.toUpperCase()}</h3>
+        <p>${brand.story ? brand.story.slice(0, 90) : ''}${brand.city ? ' ' + brand.city + '.' : ''}</p>
+        <div class="tag"><span>${brand.category || 'Moda'}</span><span>Nuovo</span></div>
+      `;
+      grid.appendChild(card);
+      applyTilt(card);
+    });
+  }
+
+  loadBrandGrid();
 
   // Waitlist toggle
   let currentType = 'utente';
