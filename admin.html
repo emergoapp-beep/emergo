@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emergo — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root{
+    --ink:#0e0e12;
+    --surface:#17171d;
+    --surface-2:#1f1f27;
+    --paper:#f4f2ed;
+    --coral:#ff4d6d;
+    --indigo:#3d5aff;
+    --gold:#e8b94d;
+    --line: rgba(244,242,237,0.12);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    background:var(--ink);color:var(--paper);
+    font-family:'Space Grotesk', sans-serif;
+    min-height:100vh;
+  }
+  .logo{font-family:'Bebas Neue', sans-serif;font-size:1.8rem;}
+  header{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:20px 5vw;border-bottom:1px solid var(--line);
+  }
+  #logoutBtn{
+    font-family:'JetBrains Mono', monospace;font-size:0.75rem;
+    border:1px solid var(--line);padding:8px 16px;border-radius:100px;
+    background:none;color:var(--paper);cursor:pointer;
+  }
+  #logoutBtn:hover{border-color:var(--paper);}
+
+  /* LOGIN */
+  #loginScreen{
+    min-height:90vh;display:flex;align-items:center;justify-content:center;
+    padding:20px;
+  }
+  .login-box{
+    background:var(--surface);border:1px solid var(--line);border-radius:20px;
+    padding:40px;max-width:380px;width:100%;
+  }
+  .login-box h1{font-family:'Bebas Neue', sans-serif;font-size:2.2rem;margin-bottom:6px;}
+  .login-box p{color:rgba(244,242,237,0.6);font-size:0.9rem;margin-bottom:24px;}
+  label{
+    font-family:'JetBrains Mono', monospace;font-size:0.72rem;
+    letter-spacing:0.05em;text-transform:uppercase;color:rgba(244,242,237,0.6);
+    display:block;margin-bottom:6px;margin-top:16px;
+  }
+  input, textarea, select{
+    width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;
+    padding:12px 14px;color:var(--paper);font-family:'Space Grotesk', sans-serif;font-size:0.95rem;
+  }
+  input:focus, textarea:focus, select:focus{outline:2px solid var(--indigo);outline-offset:1px;}
+  textarea{resize:vertical;min-height:80px;}
+  button.primary{
+    margin-top:24px;width:100%;
+    background:var(--paper);color:var(--ink);border:none;border-radius:100px;
+    padding:14px;font-family:'JetBrains Mono', monospace;font-size:0.85rem;
+    cursor:pointer;transition:all .25s ease;
+  }
+  button.primary:hover{background:var(--coral);color:var(--paper);}
+  button.primary:disabled{opacity:0.5;cursor:not-allowed;}
+  .msg{margin-top:14px;font-size:0.85rem;font-family:'JetBrains Mono', monospace;min-height:18px;}
+
+  /* DASHBOARD */
+  #dashboard{display:none;padding:40px 5vw;max-width:900px;margin:0 auto;}
+  .section-title{font-family:'Bebas Neue', sans-serif;font-size:2rem;margin-bottom:20px;}
+  .panel{
+    background:var(--surface);border:1px solid var(--line);border-radius:20px;
+    padding:32px;margin-bottom:40px;
+  }
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:640px){.row{grid-template-columns:1fr;}}
+
+  table{width:100%;border-collapse:collapse;margin-top:10px;}
+  th, td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-size:0.88rem;}
+  th{font-family:'JetBrains Mono', monospace;font-size:0.7rem;text-transform:uppercase;color:rgba(244,242,237,0.5);}
+  .badge{
+    font-family:'JetBrains Mono', monospace;font-size:0.68rem;
+    padding:3px 10px;border-radius:100px;display:inline-block;
+  }
+  .badge.active{background:rgba(232,185,77,0.15);color:var(--gold);}
+  .badge.draft{background:rgba(244,242,237,0.1);color:rgba(244,242,237,0.6);}
+  .badge.expired{background:rgba(255,77,109,0.15);color:var(--coral);}
+
+  .file-input-wrap{
+    border:1px dashed var(--line);border-radius:10px;padding:16px;text-align:center;
+    font-size:0.85rem;color:rgba(244,242,237,0.6);cursor:pointer;
+  }
+  .file-input-wrap:hover{border-color:var(--paper);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">EMERGO / admin</div>
+  <button id="logoutBtn" style="display:none;">Esci</button>
+</header>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <h1>Accedi</h1>
+    <p>Pannello riservato alla gestione dei brand.</p>
+    <label>Email</label>
+    <input type="email" id="loginEmail" placeholder="tuamail@esempio.it">
+    <label>Password</label>
+    <input type="password" id="loginPassword" placeholder="••••••••">
+    <button class="primary" id="loginBtn">Entra</button>
+    <p class="msg" id="loginMsg"></p>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+
+  <div class="panel">
+    <div class="section-title">Nuovo brand</div>
+    <div class="row">
+      <div>
+        <label>Nome brand</label>
+        <input type="text" id="brandName" placeholder="es. Nero Studio">
+      </div>
+      <div>
+        <label>Città</label>
+        <input type="text" id="brandCity" placeholder="es. Milano">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Categoria</label>
+        <input type="text" id="brandCategory" placeholder="es. Streetwear">
+      </div>
+      <div>
+        <label>Stato</label>
+        <select id="brandStatus">
+          <option value="draft">Bozza (non visibile)</option>
+          <option value="active">Attivo (visibile sul sito)</option>
+        </select>
+      </div>
+    </div>
+    <label>Storia / descrizione breve</label>
+    <textarea id="brandStory" placeholder="Chi sono, cosa fanno, cosa li rende diversi..."></textarea>
+    <div class="row">
+      <div>
+        <label>Link shop</label>
+        <input type="url" id="brandShop" placeholder="https://...">
+      </div>
+      <div>
+        <label>Link Instagram</label>
+        <input type="url" id="brandInstagram" placeholder="https://instagram.com/...">
+      </div>
+    </div>
+    <button class="primary" id="saveBrandBtn">Salva brand</button>
+    <p class="msg" id="brandMsg"></p>
+  </div>
+
+  <div class="panel">
+    <div class="section-title">Nuovo prodotto</div>
+    <label>Brand</label>
+    <select id="productBrand"></select>
+    <div class="row">
+      <div>
+        <label>Nome prodotto</label>
+        <input type="text" id="productName" placeholder="es. Giacca oversize">
+      </div>
+      <div>
+        <label>Prezzo (€)</label>
+        <input type="number" step="0.01" id="productPrice" placeholder="es. 89.00">
+      </div>
+    </div>
+    <label>Descrizione</label>
+    <textarea id="productDescription" placeholder="Materiali, dettagli, taglie..."></textarea>
+    <label>Foto prodotto</label>
+    <div class="file-input-wrap" id="fileWrap">
+      <input type="file" id="productImage" accept="image/*" style="width:auto;border:none;">
+    </div>
+    <button class="primary" id="saveProductBtn">Salva prodotto</button>
+    <p class="msg" id="productMsg"></p>
+  </div>
+
+  <div class="panel">
+    <div class="section-title">I tuoi brand</div>
+    <table id="brandsTable">
+      <thead>
+        <tr><th>Nome</th><th>Città</th><th>Stato</th></tr>
+      </thead>
+      <tbody id="brandsTableBody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://wuvtvcxneilbcfxauzeq.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_u5W20O0Amb-qANK5bYppSg_O_zvIecL';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const loginScreen = document.getElementById('loginScreen');
+  const dashboard = document.getElementById('dashboard');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  function slugify(text){
+    return text.toString().toLowerCase().trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  // ---------- LOGIN ----------
+  document.getElementById('loginBtn').addEventListener('click', async () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const msg = document.getElementById('loginMsg');
+    msg.style.color = 'rgba(244,242,237,0.6)';
+    msg.textContent = 'Accesso in corso...';
+
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if(error){
+      msg.style.color = 'var(--coral)';
+      msg.textContent = 'Credenziali non valide.';
+    } else {
+      msg.textContent = '';
+      showDashboard();
+    }
+  });
+
+  logoutBtn.addEventListener('click', async () => {
+    await supabaseClient.auth.signOut();
+    location.reload();
+  });
+
+  async function checkSession(){
+    const { data } = await supabaseClient.auth.getSession();
+    if(data.session){
+      showDashboard();
+    }
+  }
+
+  function showDashboard(){
+    loginScreen.style.display = 'none';
+    dashboard.style.display = 'block';
+    logoutBtn.style.display = 'inline-block';
+    loadBrands();
+  }
+
+  // ---------- SALVA BRAND ----------
+  document.getElementById('saveBrandBtn').addEventListener('click', async () => {
+    const name = document.getElementById('brandName').value.trim();
+    const city = document.getElementById('brandCity').value.trim();
+    const category = document.getElementById('brandCategory').value.trim();
+    const status = document.getElementById('brandStatus').value;
+    const story = document.getElementById('brandStory').value.trim();
+    const shop_url = document.getElementById('brandShop').value.trim();
+    const instagram_url = document.getElementById('brandInstagram').value.trim();
+    const msg = document.getElementById('brandMsg');
+
+    if(!name){
+      msg.style.color = 'var(--coral)';
+      msg.textContent = 'Il nome del brand è obbligatorio.';
+      return;
+    }
+
+    msg.style.color = 'rgba(244,242,237,0.6)';
+    msg.textContent = 'Salvataggio...';
+
+    const slug = slugify(name) + '-' + Math.random().toString(36).slice(2,6);
+
+    const { error } = await supabaseClient.from('brands').insert({
+      name, city, category, status, story, shop_url, instagram_url, slug
+    });
+
+    if(error){
+      msg.style.color = 'var(--coral)';
+      msg.textContent = 'Errore: ' + error.message;
+    } else {
+      msg.style.color = 'var(--gold)';
+      msg.textContent = 'Brand salvato!';
+      ['brandName','brandCity','brandCategory','brandStory','brandShop','brandInstagram'].forEach(id => document.getElementById(id).value = '');
+      loadBrands();
+    }
+  });
+
+  // ---------- CARICA BRAND (tabella + select prodotti) ----------
+  async function loadBrands(){
+    const { data, error } = await supabaseClient.from('brands').select('*').order('created_at', { ascending: false });
+    if(error) return;
+
+    const tbody = document.getElementById('brandsTableBody');
+    tbody.innerHTML = '';
+    const select = document.getElementById('productBrand');
+    select.innerHTML = '';
+
+    data.forEach(brand => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${brand.name}</td><td>${brand.city || '—'}</td><td><span class="badge ${brand.status}">${brand.status}</span></td>`;
+      tbody.appendChild(tr);
+
+      const opt = document.createElement('option');
+      opt.value = brand.id;
+      opt.textContent = brand.name;
+      select.appendChild(opt);
+    });
+  }
+
+  // ---------- SALVA PRODOTTO ----------
+  document.getElementById('saveProductBtn').addEventListener('click', async () => {
+    const brand_id = document.getElementById('productBrand').value;
+    const name = document.getElementById('productName').value.trim();
+    const price = document.getElementById('productPrice').value;
+    const description = document.getElementById('productDescription').value.trim();
+    const fileInput = document.getElementById('productImage');
+    const msg = document.getElementById('productMsg');
+
+    if(!brand_id || !name){
+      msg.style.color = 'var(--coral)';
+      msg.textContent = 'Seleziona un brand e inserisci il nome del prodotto.';
+      return;
+    }
+
+    msg.style.color = 'rgba(244,242,237,0.6)';
+    msg.textContent = 'Salvataggio...';
+
+    let image_url = null;
+
+    try {
+      if(fileInput.files.length > 0){
+        const file = fileInput.files[0];
+        const path = `${brand_id}/${Date.now()}-${file.name}`;
+        const { error: uploadError } = await supabaseClient.storage.from('brand-images').upload(path, file);
+        if(uploadError) throw uploadError;
+        const { data: urlData } = supabaseClient.storage.from('brand-images').getPublicUrl(path);
+        image_url = urlData.publicUrl;
+      }
+
+      const { error } = await supabaseClient.from('products').insert({
+        brand_id, name, price: price || null, description, image_url
+      });
+      if(error) throw error;
+
+      msg.style.color = 'var(--gold)';
+      msg.textContent = 'Prodotto salvato!';
+      ['productName','productPrice','productDescription'].forEach(id => document.getElementById(id).value = '');
+      fileInput.value = '';
+    } catch(err){
+      msg.style.color = 'var(--coral)';
+      msg.textContent = 'Errore: ' + err.message;
+    }
+  });
+
+  checkSession();
+</script>
+
+</body>
+</html>
