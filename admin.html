@@ -74,6 +74,12 @@
   button.secondary:hover{border-color:var(--paper);}
   .msg{margin-top:14px;font-size:0.85rem;font-family:'JetBrains Mono', monospace;min-height:18px;}
 
+  .hint{
+    font-size:0.76rem;color:rgba(244,242,237,0.45);
+    margin-top:6px;line-height:1.4;
+  }
+  .hint strong{color:rgba(244,242,237,0.65);}
+
   /* DASHBOARD */
   #dashboard{display:none;padding:40px 5vw;max-width:960px;margin:0 auto;}
   .section-title{font-family:'Bebas Neue', sans-serif;font-size:2rem;margin-bottom:20px;}
@@ -110,7 +116,7 @@
   .icon-btn.danger:hover{border-color:var(--coral);color:var(--coral);}
 
   .thumb-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
-  .thumb{position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--line);}
+  .thumb{position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#fff;}
   .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
   .thumb button{
     position:absolute;top:2px;right:2px;
@@ -118,7 +124,36 @@
     background:rgba(14,14,18,0.85);border:none;color:var(--coral);
     font-size:0.7rem;cursor:pointer;line-height:1;
   }
-  .cover-img{width:44px;height:44px;border-radius:8px;object-fit:cover;}
+  .cover-img{width:44px;height:44px;border-radius:8px;object-fit:cover;background:#fff;}
+
+  /* ---------- IMAGE EDITOR MODAL ---------- */
+  .editor-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.85);
+    z-index:400;display:none;align-items:center;justify-content:center;
+    padding:30px 20px;
+  }
+  .editor-overlay.open{display:flex;}
+  .editor-box{
+    background:var(--surface);border:1px solid var(--line);border-radius:20px;
+    padding:28px;max-width:420px;width:100%;text-align:center;
+  }
+  .editor-box h3{font-family:'Bebas Neue', sans-serif;font-size:1.6rem;margin-bottom:4px;}
+  .editor-box .editor-sub{font-size:0.8rem;color:rgba(244,242,237,0.5);margin-bottom:18px;}
+  .editor-canvas-wrap{
+    display:flex;justify-content:center;margin-bottom:18px;
+    touch-action:none;
+  }
+  .editor-canvas-wrap canvas{
+    border-radius:12px;cursor:grab;
+    border:1px solid var(--line);
+    background:#fff;
+  }
+  .editor-canvas-wrap canvas:active{cursor:grabbing;}
+  .zoom-row{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+  .zoom-row span{font-family:'JetBrains Mono', monospace;font-size:0.7rem;color:rgba(244,242,237,0.5);}
+  .zoom-row input[type=range]{flex:1;accent-color:var(--coral);}
+  .editor-actions{display:flex;gap:10px;justify-content:center;}
+  .editor-actions button{margin-top:0;}
 </style>
 </head>
 <body>
@@ -139,6 +174,26 @@
     <input type="password" id="loginPassword" placeholder="••••••••">
     <button class="primary" id="loginBtn">Entra</button>
     <p class="msg" id="loginMsg"></p>
+  </div>
+</div>
+
+<!-- IMAGE EDITOR MODAL -->
+<div class="editor-overlay" id="editorOverlay">
+  <div class="editor-box">
+    <h3 id="editorTitle">Regola la foto</h3>
+    <p class="editor-sub" id="editorSub">Trascina per spostare, usa lo slider per zoomare. Lo sfondo bianco riempie lo spazio vuoto.</p>
+    <div class="editor-canvas-wrap">
+      <canvas id="editorCanvas"></canvas>
+    </div>
+    <div class="zoom-row">
+      <span>−</span>
+      <input type="range" id="editorZoom" min="0" max="100" value="50">
+      <span>+</span>
+    </div>
+    <div class="editor-actions">
+      <button class="secondary" id="editorCancel">Annulla</button>
+      <button class="primary" id="editorConfirm">Conferma foto</button>
+    </div>
   </div>
 </div>
 
@@ -178,6 +233,7 @@
     <div class="file-input-wrap">
       <input type="file" id="brandLogo" accept="image/*" style="border:none;">
     </div>
+    <p class="hint"><strong>Formato consigliato:</strong> quadrato 1:1, almeno 400×400px, logo centrato. Dopo la selezione potrai regolare zoom e posizione.</p>
     <div id="currentLogoWrap" class="thumb-row"></div>
     <div class="row">
       <div>
@@ -215,7 +271,9 @@
     <div class="file-input-wrap">
       <input type="file" id="productImages" accept="image/*" multiple style="border:none;">
     </div>
+    <p class="hint"><strong>Formato consigliato:</strong> verticale 4:5, almeno 1000×1250px, JPG sotto 2MB. La prima foto è quella di copertina. Ogni foto passa dall'editor prima del caricamento.</p>
     <div id="currentImagesWrap" class="thumb-row"></div>
+    <div id="pendingImagesWrap" class="thumb-row"></div>
     <button class="primary" id="saveProductBtn">Salva prodotto</button>
     <button class="secondary" id="cancelProductEdit" style="display:none;">Annulla modifica</button>
     <p class="msg" id="productMsg"></p>
@@ -254,6 +312,8 @@
 
   let allBrandsCache = [];
   let allProductsCache = [];
+  let pendingLogoBlob = null;
+  let pendingProductBlobs = [];
 
   function slugify(text){
     return text.toString().toLowerCase().trim()
@@ -262,7 +322,159 @@
       .replace(/^-+|-+$/g, '');
   }
 
-  // ---------- LOGIN ----------
+  // ================= IMAGE EDITOR (zoom + trascinamento, sfondo bianco) =================
+  const EDITOR_SIZES = {
+    square:   { w: 280, h: 280 },
+    portrait: { w: 280, h: 350 }
+  };
+  const RENDER_SCALE = 2; // risoluzione doppia per nitidezza
+
+  const editorOverlay = document.getElementById('editorOverlay');
+  const editorCanvas = document.getElementById('editorCanvas');
+  const editorCtx = editorCanvas.getContext('2d');
+  const editorZoom = document.getElementById('editorZoom');
+
+  let editorState = null; // { img, dispW, dispH, minScale, coverScale, maxScale, scale, offsetX, offsetY, dragging, ... }
+  let editorQueue = [];   // file rimanenti da processare
+  let editorOnDone = null;
+
+  function startImageEditor(files, shape, onEachConfirmed, onQueueDone){
+    editorQueue = Array.from(files);
+    editorOnDone = onQueueDone;
+    processNextInQueue(shape, onEachConfirmed);
+  }
+
+  function processNextInQueue(shape, onEachConfirmed){
+    if(editorQueue.length === 0){
+      editorOverlay.classList.remove('open');
+      if(editorOnDone) editorOnDone();
+      return;
+    }
+    const file = editorQueue.shift();
+    openSingleEditor(file, shape, (blob) => {
+      onEachConfirmed(blob);
+      processNextInQueue(shape, onEachConfirmed);
+    });
+  }
+
+  function openSingleEditor(file, shape, onConfirm){
+    const size = EDITOR_SIZES[shape];
+    editorCanvas.width = size.w * RENDER_SCALE;
+    editorCanvas.height = size.h * RENDER_SCALE;
+    editorCanvas.style.width = size.w + 'px';
+    editorCanvas.style.height = size.h + 'px';
+
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      const cw = editorCanvas.width, ch = editorCanvas.height;
+      const coverScale = Math.max(cw / img.width, ch / img.height);
+      const minScale = Math.min(cw / img.width, ch / img.height) * 0.6;
+      const maxScale = coverScale * 3;
+
+      editorState = {
+        img,
+        cw, ch,
+        minScale, maxScale, coverScale,
+        scale: coverScale,
+        offsetX: (cw - img.width * coverScale) / 2,
+        offsetY: (ch - img.height * coverScale) / 2,
+        dragging: false,
+        startX: 0, startY: 0, startOffX: 0, startOffY: 0
+      };
+
+      editorZoom.min = 0;
+      editorZoom.max = 100;
+      editorZoom.value = 100 * (coverScale - minScale) / (maxScale - minScale);
+
+      drawEditorFrame();
+      editorOverlay.classList.add('open');
+    };
+    img.src = objectUrl;
+
+    // Rimuove eventuali listener precedenti clonando i bottoni
+    const confirmBtn = document.getElementById('editorConfirm');
+    const cancelBtn = document.getElementById('editorCancel');
+    const newConfirm = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+    const newCancel = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+    newConfirm.addEventListener('click', () => {
+      editorCanvas.toBlob((blob) => {
+        URL.revokeObjectURL(objectUrl);
+        onConfirm(blob);
+      }, 'image/jpeg', 0.9);
+    });
+    newCancel.addEventListener('click', () => {
+      URL.revokeObjectURL(objectUrl);
+      editorQueue = [];
+      editorOverlay.classList.remove('open');
+      if(editorOnDone) editorOnDone();
+    });
+  }
+
+  function drawEditorFrame(){
+    if(!editorState) return;
+    const s = editorState;
+    editorCtx.fillStyle = '#ffffff';
+    editorCtx.fillRect(0, 0, s.cw, s.ch);
+    editorCtx.drawImage(s.img, s.offsetX, s.offsetY, s.img.width * s.scale, s.img.height * s.scale);
+  }
+
+  editorZoom.addEventListener('input', () => {
+    if(!editorState) return;
+    const s = editorState;
+    const t = editorZoom.value / 100;
+    const newScale = s.minScale + t * (s.maxScale - s.minScale);
+    // Mantiene il centro dell'immagine fisso durante lo zoom
+    const cx = s.offsetX + (s.img.width * s.scale) / 2;
+    const cy = s.offsetY + (s.img.height * s.scale) / 2;
+    s.scale = newScale;
+    s.offsetX = cx - (s.img.width * newScale) / 2;
+    s.offsetY = cy - (s.img.height * newScale) / 2;
+    drawEditorFrame();
+  });
+
+  function editorPointerPos(e){
+    const rect = editorCanvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left) * (editorCanvas.width / rect.width),
+      y: (clientY - rect.top) * (editorCanvas.height / rect.height)
+    };
+  }
+
+  function editorDragStart(e){
+    if(!editorState) return;
+    const pos = editorPointerPos(e);
+    editorState.dragging = true;
+    editorState.startX = pos.x;
+    editorState.startY = pos.y;
+    editorState.startOffX = editorState.offsetX;
+    editorState.startOffY = editorState.offsetY;
+  }
+  function editorDragMove(e){
+    if(!editorState || !editorState.dragging) return;
+    e.preventDefault();
+    const pos = editorPointerPos(e);
+    editorState.offsetX = editorState.startOffX + (pos.x - editorState.startX);
+    editorState.offsetY = editorState.startOffY + (pos.y - editorState.startY);
+    drawEditorFrame();
+  }
+  function editorDragEnd(){
+    if(editorState) editorState.dragging = false;
+  }
+
+  editorCanvas.addEventListener('mousedown', editorDragStart);
+  window.addEventListener('mousemove', editorDragMove);
+  window.addEventListener('mouseup', editorDragEnd);
+  editorCanvas.addEventListener('touchstart', editorDragStart, { passive: true });
+  editorCanvas.addEventListener('touchmove', editorDragMove, { passive: false });
+  editorCanvas.addEventListener('touchend', editorDragEnd);
+
+  // ================= LOGIN =================
   document.getElementById('loginBtn').addEventListener('click', async () => {
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
@@ -300,7 +512,7 @@
     loadProducts();
   }
 
-  // ---------- FORM BRAND: reset / carica per modifica ----------
+  // ================= FORM BRAND =================
   function resetBrandForm(){
     document.getElementById('brandId').value = '';
     document.getElementById('brandFormTitle').textContent = 'Nuovo brand';
@@ -310,6 +522,7 @@
     document.getElementById('currentLogoWrap').innerHTML = '';
     document.getElementById('saveBrandBtn').textContent = 'Salva brand';
     document.getElementById('cancelBrandEdit').style.display = 'none';
+    pendingLogoBlob = null;
   }
 
   function loadBrandIntoForm(brand){
@@ -324,6 +537,7 @@
     document.getElementById('brandStatus').value = brand.status || 'draft';
     document.getElementById('currentLogoWrap').innerHTML = brand.logo_url
       ? `<div class="thumb"><img src="${brand.logo_url}"></div>` : '';
+    pendingLogoBlob = null;
     document.getElementById('saveBrandBtn').textContent = 'Aggiorna brand';
     document.getElementById('cancelBrandEdit').style.display = 'inline-block';
     window.scrollTo({top:0, behavior:'smooth'});
@@ -331,7 +545,18 @@
 
   document.getElementById('cancelBrandEdit').addEventListener('click', resetBrandForm);
 
-  // ---------- SALVA / AGGIORNA BRAND ----------
+  // Quando si seleziona un logo, apre subito l'editor (zoom + trascina, sfondo bianco)
+  document.getElementById('brandLogo').addEventListener('change', (e) => {
+    const files = e.target.files;
+    if(!files || files.length === 0) return;
+    document.getElementById('editorTitle').textContent = 'Regola il logo';
+    startImageEditor([files[0]], 'square', (blob) => {
+      pendingLogoBlob = blob;
+      const wrap = document.getElementById('currentLogoWrap');
+      wrap.innerHTML = `<div class="thumb"><img src="${URL.createObjectURL(blob)}"></div>`;
+    }, () => {});
+  });
+
   document.getElementById('saveBrandBtn').addEventListener('click', async () => {
     const id = document.getElementById('brandId').value;
     const name = document.getElementById('brandName').value.trim();
@@ -341,7 +566,6 @@
     const story = document.getElementById('brandStory').value.trim();
     const shop_url = document.getElementById('brandShop').value.trim();
     const instagram_url = document.getElementById('brandInstagram').value.trim();
-    const logoInput = document.getElementById('brandLogo');
     const msg = document.getElementById('brandMsg');
 
     if(!name){
@@ -355,17 +579,15 @@
 
     try {
       let logo_url;
-      if(logoInput.files.length > 0){
-        const file = logoInput.files[0];
-        const path = `logos/${slugify(name)}-${Date.now()}-${file.name}`;
-        const { error: uploadError } = await supabaseClient.storage.from('brand-images').upload(path, file);
+      if(pendingLogoBlob){
+        const path = `logos/${slugify(name)}-${Date.now()}.jpg`;
+        const { error: uploadError } = await supabaseClient.storage.from('brand-images').upload(path, pendingLogoBlob, { contentType: 'image/jpeg' });
         if(uploadError) throw uploadError;
         const { data: urlData } = supabaseClient.storage.from('brand-images').getPublicUrl(path);
         logo_url = urlData.publicUrl;
       }
 
       if(id){
-        // AGGIORNAMENTO
         const payload = { name, city, category, status, story, shop_url, instagram_url };
         if(logo_url) payload.logo_url = logo_url;
         const { error } = await supabaseClient.from('brands').update(payload).eq('id', id);
@@ -373,7 +595,6 @@
         msg.style.color = 'var(--gold)';
         msg.textContent = 'Brand aggiornato!';
       } else {
-        // NUOVO
         const slug = slugify(name) + '-' + Math.random().toString(36).slice(2,6);
         const { error } = await supabaseClient.from('brands').insert({
           name, city, category, status, story, shop_url, instagram_url, slug, logo_url: logo_url || null
@@ -391,7 +612,6 @@
     }
   });
 
-  // ---------- ELIMINA BRAND ----------
   async function deleteBrand(id, name){
     if(!confirm(`Eliminare "${name}"? Verranno eliminati anche tutti i suoi prodotti.`)) return;
     const { error } = await supabaseClient.from('brands').delete().eq('id', id);
@@ -403,7 +623,6 @@
     loadProducts();
   }
 
-  // ---------- CARICA BRAND (tabella + select prodotti) ----------
   async function loadBrands(){
     const { data, error } = await supabaseClient.from('brands').select('*').order('created_at', { ascending: false });
     if(error) return;
@@ -451,15 +670,17 @@
     });
   }
 
-  // ---------- FORM PRODOTTO: reset / carica per modifica ----------
+  // ================= FORM PRODOTTO =================
   function resetProductForm(){
     document.getElementById('productId').value = '';
     document.getElementById('productFormTitle').textContent = 'Nuovo prodotto';
     ['productName','productPrice','productDescription'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('productImages').value = '';
     document.getElementById('currentImagesWrap').innerHTML = '';
+    document.getElementById('pendingImagesWrap').innerHTML = '';
     document.getElementById('saveProductBtn').textContent = 'Salva prodotto';
     document.getElementById('cancelProductEdit').style.display = 'none';
+    pendingProductBlobs = [];
   }
 
   async function loadProductIntoForm(product){
@@ -469,6 +690,8 @@
     document.getElementById('productName').value = product.name || '';
     document.getElementById('productPrice').value = product.price || '';
     document.getElementById('productDescription').value = product.description || '';
+    document.getElementById('pendingImagesWrap').innerHTML = '';
+    pendingProductBlobs = [];
     document.getElementById('saveProductBtn').textContent = 'Aggiorna prodotto';
     document.getElementById('cancelProductEdit').style.display = 'inline-block';
 
@@ -493,14 +716,29 @@
 
   document.getElementById('cancelProductEdit').addEventListener('click', resetProductForm);
 
-  // ---------- SALVA / AGGIORNA PRODOTTO ----------
+  // Quando si selezionano una o più foto prodotto, apre l'editor in sequenza (una per una)
+  document.getElementById('productImages').addEventListener('change', (e) => {
+    const files = e.target.files;
+    if(!files || files.length === 0) return;
+    document.getElementById('editorTitle').textContent = 'Regola la foto del prodotto';
+    startImageEditor(files, 'portrait', (blob) => {
+      pendingProductBlobs.push(blob);
+      const wrap = document.getElementById('pendingImagesWrap');
+      const div = document.createElement('div');
+      div.className = 'thumb';
+      div.innerHTML = `<img src="${URL.createObjectURL(blob)}">`;
+      wrap.appendChild(div);
+    }, () => {
+      e.target.value = '';
+    });
+  });
+
   document.getElementById('saveProductBtn').addEventListener('click', async () => {
     const id = document.getElementById('productId').value;
     const brand_id = document.getElementById('productBrand').value;
     const name = document.getElementById('productName').value.trim();
     const price = document.getElementById('productPrice').value;
     const description = document.getElementById('productDescription').value.trim();
-    const filesInput = document.getElementById('productImages');
     const msg = document.getElementById('productMsg');
 
     if(!brand_id || !name){
@@ -528,16 +766,13 @@
         productId = data.id;
       }
 
-      // Carica ed associa tutte le foto selezionate
-      if(filesInput.files.length > 0){
-        for(let i = 0; i < filesInput.files.length; i++){
-          const file = filesInput.files[i];
-          const path = `${brand_id}/${productId}/${Date.now()}-${i}-${file.name}`;
-          const { error: uploadError } = await supabaseClient.storage.from('brand-images').upload(path, file);
-          if(uploadError) throw uploadError;
-          const { data: urlData } = supabaseClient.storage.from('brand-images').getPublicUrl(path);
-          await supabaseClient.from('product_images').insert({ product_id: productId, image_url: urlData.publicUrl, sort_order: i });
-        }
+      for(let i = 0; i < pendingProductBlobs.length; i++){
+        const blob = pendingProductBlobs[i];
+        const path = `${brand_id}/${productId}/${Date.now()}-${i}.jpg`;
+        const { error: uploadError } = await supabaseClient.storage.from('brand-images').upload(path, blob, { contentType: 'image/jpeg' });
+        if(uploadError) throw uploadError;
+        const { data: urlData } = supabaseClient.storage.from('brand-images').getPublicUrl(path);
+        await supabaseClient.from('product_images').insert({ product_id: productId, image_url: urlData.publicUrl, sort_order: i });
       }
 
       msg.style.color = 'var(--gold)';
@@ -550,7 +785,6 @@
     }
   });
 
-  // ---------- ELIMINA PRODOTTO ----------
   async function deleteProduct(id, name){
     if(!confirm(`Eliminare "${name}"? Verranno eliminate anche tutte le sue foto.`)) return;
     const { error } = await supabaseClient.from('products').delete().eq('id', id);
@@ -561,7 +795,6 @@
     loadProducts();
   }
 
-  // ---------- CARICA PRODOTTI (tabella) ----------
   async function loadProducts(){
     const { data: products, error } = await supabaseClient
       .from('products')
