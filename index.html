@@ -836,10 +836,7 @@
 </header>
 
 <div class="marquee-wrap">
-  <div class="marquee" id="marquee">
-    <span>NERO STUDIO</span><span>FILO</span><span>OSSO</span><span>ALBA WORKSHOP</span><span>CALLE</span><span>TERRA°</span><span>SEDICI</span><span>VESPRO</span>
-    <span>NERO STUDIO</span><span>FILO</span><span>OSSO</span><span>ALBA WORKSHOP</span><span>CALLE</span><span>TERRA°</span><span>SEDICI</span><span>VESPRO</span>
-  </div>
+  <div class="marquee" id="marquee"></div>
 </div>
 
 <section id="cos-e">
@@ -994,7 +991,22 @@
 
     allBrands = brands;
     buildFilterBar();
+    buildMarquee();
     renderBrandGrid();
+  }
+
+  // Riempie la striscia scorrevole in alto con i nomi dei brand attivi (auto-aggiornata)
+  function buildMarquee(){
+    const marquee = document.getElementById('marquee');
+    if(allBrands.length === 0){
+      document.querySelector('.marquee-wrap').style.display = 'none';
+      return;
+    }
+    // Duplica la lista più volte così lo scorrimento è sempre continuo, anche con pochi brand
+    const names = allBrands.map(b => b.name.toUpperCase());
+    const repeated = [];
+    while(repeated.length < 16) repeated.push(...names);
+    marquee.innerHTML = repeated.map(n => `<span>${n}</span>`).join('');
   }
 
   function buildFilterBar(){
