@@ -88,6 +88,15 @@
   .badge.draft{background:rgba(244,242,237,0.1);color:rgba(244,242,237,0.6);}
   .badge.expired{background:rgba(255,77,109,0.15);color:var(--coral);}
 
+  .delete-btn{
+    font-family:'JetBrains Mono', monospace;font-size:0.72rem;
+    border:1px solid rgba(255,77,109,0.4);color:var(--coral);
+    background:none;padding:6px 14px;border-radius:100px;cursor:pointer;
+    transition:all .2s ease;
+  }
+  .delete-btn:hover{background:var(--coral);color:var(--paper);border-color:var(--coral);}
+  .delete-btn:disabled{opacity:0.5;cursor:not-allowed;}
+
   .file-input-wrap{
     border:1px dashed var(--line);border-radius:10px;padding:16px;text-align:center;
     font-size:0.85rem;color:rgba(244,242,237,0.6);cursor:pointer;
@@ -192,9 +201,19 @@
     <div class="section-title">I tuoi brand</div>
     <table id="brandsTable">
       <thead>
-        <tr><th>Logo</th><th>Nome</th><th>Città</th><th>Stato</th></tr>
+        <tr><th>Logo</th><th>Nome</th><th>Città</th><th>Stato</th><th>Azioni</th></tr>
       </thead>
       <tbody id="brandsTableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <div class="section-title">I tuoi prodotti</div>
+    <table id="productsTable">
+      <thead>
+        <tr><th>Foto</th><th>Nome</th><th>Brand</th><th>Prezzo</th><th>Azioni</th></tr>
+      </thead>
+      <tbody id="productsTableBody"></tbody>
     </table>
   </div>
 
@@ -214,6 +233,24 @@
       .replace(/[^\w\s-]/g, '')
       .replace(/[\s_-]+/g, '-')
       .replace(/^-+|-+$/g, '');
+  }
+
+  const STORAGE_BUCKET = 'brand-images';
+
+  // Estrae il path interno al bucket da un public URL di Supabase Storage
+  function storagePathFromUrl(url){
+    if(!url) return null;
+    const marker = `/object/public/${STORAGE_BUCKET}/`;
+    const idx = url.indexOf(marker);
+    if(idx === -1) return null;
+    return decodeURIComponent(url.slice(idx + marker.length));
+  }
+
+  async function removeStorageFiles(urls){
+    const paths = urls.map(storagePathFromUrl).filter(Boolean);
+    if(paths.length === 0) return;
+    const { error } = await supabaseClient.storage.from(STORAGE_BUCKET).remove(paths);
+    if(error) console.warn('Pulizia storage non riuscita per alcuni file:', error.message);
   }
 
   // ---------- LOGIN ----------
@@ -251,6 +288,7 @@
     dashboard.style.display = 'block';
     logoutBtn.style.display = 'inline-block';
     loadBrands();
+    loadProducts();
   }
 
   // ---------- SALVA BRAND ----------
@@ -319,7 +357,7 @@
       const logoCell = brand.logo_url
         ? `<img src="${brand.logo_url}" alt="${brand.name}" style="width:36px;height:36px;object-fit:contain;border-radius:8px;background:var(--ink);padding:4px;">`
         : '—';
-      tr.innerHTML = `<td>${logoCell}</td><td>${brand.name}</td><td>${brand.city || '—'}</td><td><span class="badge ${brand.status}">${brand.status}</span></td>`;
+      tr.innerHTML = `<td>${logoCell}</td><td>${brand.name}</td><td>${brand.city || '—'}</td><td><span class="badge ${brand.status}">${brand.status}</span></td><td><button class="delete-btn" data-id="${brand.id}" data-name="${brand.name.replace(/"/g,'&quot;')}">Elimina</button></td>`;
       tbody.appendChild(tr);
 
       const opt = document.createElement('option');
@@ -328,6 +366,44 @@
       select.appendChild(opt);
     });
   }
+
+  // ---------- ELIMINA BRAND ----------
+  document.getElementById('brandsTableBody').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.delete-btn');
+    if(!btn) return;
+
+    const id = btn.dataset.id;
+    const name = btn.dataset.name;
+
+    if(!confirm(`Eliminare "${name}"? Verranno eliminati anche tutti i suoi prodotti e i relativi file (logo, foto). L'azione non è reversibile.`)){
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Elimino...';
+
+    try {
+      // Recupera logo e foto prodotti da rimuovere dallo storage prima di cancellare le righe
+      const { data: brandRow } = await supabaseClient.from('brands').select('logo_url').eq('id', id).single();
+      const { data: productRows } = await supabaseClient.from('products').select('image_url').eq('brand_id', id);
+
+      const urlsToRemove = [];
+      if(brandRow && brandRow.logo_url) urlsToRemove.push(brandRow.logo_url);
+      if(productRows) productRows.forEach(p => { if(p.image_url) urlsToRemove.push(p.image_url); });
+
+      await removeStorageFiles(urlsToRemove);
+
+      const { error } = await supabaseClient.from('brands').delete().eq('id', id);
+      if(error) throw error;
+
+      loadBrands();
+      loadProducts();
+    } catch(err){
+      alert('Errore durante l\'eliminazione: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Elimina';
+    }
+  });
 
   // ---------- SALVA PRODOTTO ----------
   document.getElementById('saveProductBtn').addEventListener('click', async () => {
@@ -368,9 +444,63 @@
       msg.textContent = 'Prodotto salvato!';
       ['productName','productPrice','productDescription'].forEach(id => document.getElementById(id).value = '');
       fileInput.value = '';
+      loadProducts();
     } catch(err){
       msg.style.color = 'var(--coral)';
       msg.textContent = 'Errore: ' + err.message;
+    }
+  });
+
+  // ---------- CARICA PRODOTTI ----------
+  async function loadProducts(){
+    const { data, error } = await supabaseClient
+      .from('products')
+      .select('id, name, price, image_url, brands(name)')
+      .order('created_at', { ascending: false });
+    if(error) return;
+
+    const tbody = document.getElementById('productsTableBody');
+    tbody.innerHTML = '';
+
+    data.forEach(product => {
+      const tr = document.createElement('tr');
+      const photoCell = product.image_url
+        ? `<img src="${product.image_url}" alt="${product.name}" style="width:36px;height:36px;object-fit:cover;border-radius:8px;">`
+        : '—';
+      const price = product.price !== null && product.price !== undefined ? '€ ' + Number(product.price).toFixed(2) : '—';
+      const brandName = product.brands ? product.brands.name : '—';
+      tr.innerHTML = `<td>${photoCell}</td><td>${product.name}</td><td>${brandName}</td><td>${price}</td><td><button class="delete-btn" data-id="${product.id}" data-name="${product.name.replace(/"/g,'&quot;')}" data-image="${product.image_url || ''}">Elimina</button></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // ---------- ELIMINA PRODOTTO ----------
+  document.getElementById('productsTableBody').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.delete-btn');
+    if(!btn) return;
+
+    const id = btn.dataset.id;
+    const name = btn.dataset.name;
+    const image = btn.dataset.image;
+
+    if(!confirm(`Eliminare il prodotto "${name}"? La foto verrà rimossa definitivamente. L'azione non è reversibile.`)){
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Elimino...';
+
+    try {
+      if(image) await removeStorageFiles([image]);
+
+      const { error } = await supabaseClient.from('products').delete().eq('id', id);
+      if(error) throw error;
+
+      loadProducts();
+    } catch(err){
+      alert('Errore durante l\'eliminazione: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Elimina';
     }
   });
 
