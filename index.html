@@ -398,6 +398,19 @@
   .latest-card-brand img{width:18px;height:18px;border-radius:50%;object-fit:cover;}
   .latest-card-name{font-size:1rem;font-weight:600;margin-bottom:4px;}
   .latest-card-price{font-family:'JetBrains Mono', monospace;font-size:0.82rem;color:var(--gold);}
+  .latest-card-actions{display:flex;gap:8px;margin-top:14px;}
+  .latest-card-actions button, .latest-card-actions a{
+    flex:1;text-align:center;
+    font-family:'JetBrains Mono', monospace;font-size:0.7rem;
+    padding:9px 10px;border-radius:100px;
+    cursor:pointer;text-decoration:none;
+    transition:all .2s ease;
+  }
+  .latest-card-view{background:var(--paper);color:var(--ink);border:none;}
+  .latest-card-view:hover{background:var(--coral);color:var(--paper);}
+  .latest-card-shop{background:none;border:1px solid var(--line);color:var(--paper);}
+  .latest-card-shop:hover{border-color:var(--paper);}
+  .latest-card-img-wrap{cursor:pointer;display:block;}
 
   /* ---------- FOR BRANDS ---------- */
   .brand-section{
@@ -853,6 +866,8 @@
   });
 
   // Carica gli ultimi prodotti aggiunti (di tutti i brand attivi) per la sezione "Appena arrivati"
+  let latestProducts = [];
+
   async function loadLatestArrivals(){
     const grid = document.getElementById('latestGrid');
     const { data: products, error } = await supabaseClient
@@ -867,14 +882,21 @@
       return;
     }
 
-    grid.innerHTML = products.map(p => {
-      const images = (p.product_images || []).sort((a,b) => a.sort_order - b.sort_order);
-      const cover = images.length > 0 ? images[0].image_url : '';
+    // Prepara i dati nello stesso formato usato dal lightbox (name, price, images)
+    latestProducts = products.map(p => ({
+      name: p.name,
+      price: p.price,
+      images: (p.product_images || []).sort((a,b) => a.sort_order - b.sort_order).map(img => img.image_url)
+    }));
+
+    grid.innerHTML = products.map((p, i) => {
       const brand = p.brands;
-      const link = brand.shop_url || '#';
+      const cover = latestProducts[i].images[0] || '';
       return `
-        <a href="${link}" target="${brand.shop_url ? '_blank' : '_self'}" rel="noopener" class="latest-card" data-brand-id="${p.brand_id}">
-          ${cover ? `<img class="latest-card-img" src="${cover}" alt="${p.name}">` : ''}
+        <div class="latest-card">
+          <div class="latest-card-img-wrap" data-open-drop="${i}">
+            ${cover ? `<img class="latest-card-img" src="${cover}" alt="${p.name}">` : ''}
+          </div>
           <div class="latest-card-body">
             <div class="latest-card-brand">
               ${brand.logo_url ? `<img src="${brand.logo_url}" alt="${brand.name}">` : ''}
@@ -882,19 +904,28 @@
             </div>
             <div class="latest-card-name">${p.name}</div>
             ${p.price ? `<div class="latest-card-price">€${Number(p.price).toFixed(2)}</div>` : ''}
+            <div class="latest-card-actions">
+              <button class="latest-card-view" data-open-drop="${i}">Vedi drop</button>
+              ${brand.shop_url
+                ? `<a href="${brand.shop_url}" target="_blank" rel="noopener" class="latest-card-shop">Vai al brand</a>`
+                : `<button class="latest-card-shop" data-open-brand="${p.brand_id}">Vai al brand</button>`}
+            </div>
           </div>
-        </a>
+        </div>
       `;
     }).join('');
 
-    // Se il brand non ha un link shop esterno, il click apre la scheda brand su Emergo
-    grid.querySelectorAll('.latest-card').forEach(el => {
-      if(el.getAttribute('href') === '#'){
-        el.addEventListener('click', (e) => {
-          e.preventDefault();
-          openBrandModal(el.dataset.brandId);
-        });
-      }
+    // Apre il drop (foto grande scorrevole) nel lightbox
+    grid.querySelectorAll('[data-open-drop]').forEach(el => {
+      el.addEventListener('click', () => {
+        currentDropProducts = latestProducts;
+        openLightbox(parseInt(el.dataset.openDrop));
+      });
+    });
+
+    // Se il brand non ha link shop esterno, il pulsante apre comunque la scheda brand su Emergo
+    grid.querySelectorAll('[data-open-brand]').forEach(el => {
+      el.addEventListener('click', () => openBrandModal(el.dataset.openBrand));
     });
   }
 
