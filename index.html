@@ -468,46 +468,65 @@
   .lightbox-dot.active{background:var(--paper);}
   .drop-card{cursor:pointer;}
 
-  /* ---------- LATEST ARRIVALS (homepage) ---------- */
-  .latest-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
+  /* ---------- LATEST ARRIVALS (homepage — carosello auto-scorrevole) ---------- */
+  .latest-scroll{
+    overflow:hidden;
+    margin:0 -6vw;
+    padding:0 6vw;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+  }
+  .latest-track{
+    display:flex;
     gap:20px;
+    width:max-content;
+    animation: latestScroll 42s linear infinite;
+  }
+  .latest-scroll:hover .latest-track{animation-play-state:paused;}
+  @keyframes latestScroll{
+    from{transform:translateX(0);}
+    to{transform:translateX(-50%);}
   }
   .latest-card{
     background:var(--surface);
     border:1px solid var(--line);
     border-radius:16px;
     overflow:hidden;
-    text-decoration:none;
     color:var(--paper);
-    display:block;
+    width:230px;
+    flex:0 0 auto;
     transition: transform .25s ease, border-color .25s ease;
   }
   .latest-card:hover{transform:translateY(-4px);border-color:rgba(244,242,237,0.35);}
-  .latest-card-img{width:100%;height:220px;object-fit:cover;display:block;background:var(--surface-2);}
+  .latest-card-img-wrap{
+    position:relative;width:100%;height:220px;
+    background:var(--surface-2);
+    cursor:pointer;overflow:hidden;
+  }
+  .latest-card-img-wrap img{
+    position:absolute;inset:0;
+    width:100%;height:100%;object-fit:cover;display:block;
+    opacity:0;
+    transition:opacity 1s ease;
+  }
+  .latest-card-img-wrap img.active{opacity:1;}
+  .latest-card-dots{
+    position:absolute;bottom:8px;left:0;right:0;
+    display:flex;gap:4px;justify-content:center;z-index:2;
+  }
+  .latest-card-dots span{width:4px;height:4px;border-radius:50%;background:rgba(244,242,237,0.4);transition:background .3s ease;}
+  .latest-card-dots span.active{background:var(--paper);}
   .latest-card-body{padding:16px 18px;}
   .latest-card-brand{
     display:flex;align-items:center;gap:8px;
     font-family:'JetBrains Mono', monospace;font-size:0.7rem;
     color:rgba(244,242,237,0.5);margin-bottom:6px;
+    cursor:pointer;width:fit-content;
   }
+  .latest-card-brand:hover{color:var(--coral);}
   .latest-card-brand img{width:18px;height:18px;border-radius:50%;object-fit:cover;}
   .latest-card-name{font-size:1rem;font-weight:600;margin-bottom:4px;}
   .latest-card-price{font-family:'JetBrains Mono', monospace;font-size:0.82rem;color:var(--gold);}
-  .latest-card-actions{display:flex;gap:8px;margin-top:14px;}
-  .latest-card-actions button, .latest-card-actions a{
-    flex:1;text-align:center;
-    font-family:'JetBrains Mono', monospace;font-size:0.7rem;
-    padding:9px 10px;border-radius:100px;
-    cursor:pointer;text-decoration:none;
-    transition:all .2s ease;
-  }
-  .latest-card-view{background:var(--paper);color:var(--ink);border:none;}
-  .latest-card-view:hover{background:var(--coral);color:var(--paper);}
-  .latest-card-shop{background:none;border:1px solid var(--line);color:var(--paper);}
-  .latest-card-shop:hover{border-color:var(--paper);}
-  .latest-card-img-wrap{cursor:pointer;display:block;}
 
   /* ---------- FOR BRANDS ---------- */
   .brand-section{
@@ -650,7 +669,7 @@
     <span class="eyebrow">Contatti</span>
     <h3>Parliamone.</h3>
     <div class="side-menu-contacts">
-      <a href="mailto:ciao@emergo.app">✉️ ciao@emergo.app</a>
+      <a href="mailto:emergoapp@gmail.com">✉️ emergoapp@gmail.com</a>
       <a href="https://www.instagram.com/emergo2026" target="_blank" rel="noopener">Instagram → @emergo2026</a>
       <a href="https://www.tiktok.com/@emergo.app" target="_blank" rel="noopener">TikTok → @emergo.app</a>
     </div>
@@ -735,8 +754,10 @@
     <span class="eyebrow">Appena arrivati</span>
     <h2>Gli ultimi pezzi caricati.</h2>
   </div>
-  <div class="latest-grid reveal visible" id="latestGrid">
-    <p style="color:rgba(244,242,237,0.5); font-family:'JetBrains Mono', monospace; font-size:0.85rem;">Caricamento...</p>
+  <div class="latest-scroll reveal visible">
+    <div class="latest-track" id="latestGrid">
+      <p style="color:rgba(244,242,237,0.5); font-family:'JetBrains Mono', monospace; font-size:0.85rem;">Caricamento...</p>
+    </div>
   </div>
 </section>
 
@@ -990,19 +1011,31 @@
   // Carica gli ultimi prodotti aggiunti (di tutti i brand attivi) per la sezione "Appena arrivati"
   let latestProducts = [];
 
+  function shuffleArray(arr){
+    const a = [...arr];
+    for(let i = a.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
   async function loadLatestArrivals(){
     const grid = document.getElementById('latestGrid');
-    const { data: products, error } = await supabaseClient
+    const { data, error } = await supabaseClient
       .from('products')
       .select('id, name, price, brand_id, product_images(image_url, sort_order), brands!inner(name, logo_url, shop_url, status)')
       .eq('brands.status', 'active')
       .order('created_at', { ascending: false })
-      .limit(8);
+      .limit(16);
 
-    if(error || !products || products.length === 0){
+    if(error || !data || data.length === 0){
       grid.innerHTML = `<p style="color:rgba(244,242,237,0.5); font-family:'JetBrains Mono', monospace; font-size:0.85rem;">I primi pezzi arrivano a breve.</p>`;
       return;
     }
+
+    // Ordine casuale, così ogni visita mostra un mix diverso
+    const products = shuffleArray(data);
 
     // Prepara i dati nello stesso formato usato dal lightbox (name, price, images)
     latestProducts = products.map(p => ({
@@ -1011,33 +1044,39 @@
       images: (p.product_images || []).sort((a,b) => a.sort_order - b.sort_order).map(img => img.image_url)
     }));
 
-    grid.innerHTML = products.map((p, i) => {
+    function renderCard(p, i){
       const brand = p.brands;
-      const cover = latestProducts[i].images[0] || '';
+      const images = latestProducts[i].images;
+      const imagesHtml = images.length > 0
+        ? images.map((src, k) => `<img src="${src}" alt="${p.name}" class="${k === 0 ? 'active' : ''}" data-slide="${k}">`).join('')
+        : '';
+      const dotsHtml = images.length > 1
+        ? `<div class="latest-card-dots">${images.map((_, k) => `<span class="${k === 0 ? 'active' : ''}"></span>`).join('')}</div>`
+        : '';
       return `
         <div class="latest-card">
           <div class="latest-card-img-wrap" data-open-drop="${i}">
-            ${cover ? `<img class="latest-card-img" src="${cover}" alt="${p.name}">` : ''}
+            ${imagesHtml}
+            ${dotsHtml}
           </div>
           <div class="latest-card-body">
-            <div class="latest-card-brand">
+            <div class="latest-card-brand" data-brand-click="${p.brand_id}">
               ${brand.logo_url ? `<img src="${brand.logo_url}" alt="${brand.name}">` : ''}
               <span>${brand.name}</span>
             </div>
             <div class="latest-card-name">${p.name}</div>
             ${p.price ? `<div class="latest-card-price">€${Number(p.price).toFixed(2)}</div>` : ''}
-            <div class="latest-card-actions">
-              <button class="latest-card-view" data-open-drop="${i}">Vedi drop</button>
-              ${brand.shop_url
-                ? `<a href="${brand.shop_url}" target="_blank" rel="noopener" class="latest-card-shop">Vai al brand</a>`
-                : `<button class="latest-card-shop" data-open-brand="${p.brand_id}">Vai al brand</button>`}
-            </div>
           </div>
         </div>
       `;
-    }).join('');
+    }
 
-    // Apre il drop (foto grande scorrevole) nel lightbox
+    // Duplica la lista per uno scorrimento continuo senza scatti (loop infinito)
+    const cardsHtml = products.map(renderCard).join('');
+    const cardsHtmlDuplicate = products.map((p, i) => renderCard(p, i)).join('');
+    grid.innerHTML = cardsHtml + cardsHtmlDuplicate;
+
+    // Apre il drop (foto grande scorrevole) nel lightbox al click sull'immagine
     grid.querySelectorAll('[data-open-drop]').forEach(el => {
       el.addEventListener('click', () => {
         currentDropProducts = latestProducts;
@@ -1045,9 +1084,27 @@
       });
     });
 
-    // Se il brand non ha link shop esterno, il pulsante apre comunque la scheda brand su Emergo
-    grid.querySelectorAll('[data-open-brand]').forEach(el => {
-      el.addEventListener('click', () => openBrandModal(el.dataset.openBrand));
+    // Il nome/logo del brand apre sempre la sua scheda su Emergo
+    grid.querySelectorAll('[data-brand-click]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openBrandModal(el.dataset.brandClick);
+      });
+    });
+
+    // Ogni card con più foto le alterna automaticamente in dissolvenza
+    grid.querySelectorAll('.latest-card-img-wrap').forEach(wrap => {
+      const imgs = wrap.querySelectorAll('img');
+      const dots = wrap.querySelectorAll('.latest-card-dots span');
+      if(imgs.length <= 1) return;
+      let active = 0;
+      setInterval(() => {
+        imgs[active].classList.remove('active');
+        if(dots[active]) dots[active].classList.remove('active');
+        active = (active + 1) % imgs.length;
+        imgs[active].classList.add('active');
+        if(dots[active]) dots[active].classList.add('active');
+      }, 2600 + Math.random() * 800); // leggero sfasamento tra le card per un effetto più naturale
     });
   }
 
