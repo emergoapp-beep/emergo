@@ -58,17 +58,24 @@
   input:focus, textarea:focus, select:focus{outline:2px solid var(--indigo);outline-offset:1px;}
   textarea{resize:vertical;min-height:80px;}
   button.primary{
-    margin-top:24px;width:100%;
+    margin-top:24px;
     background:var(--paper);color:var(--ink);border:none;border-radius:100px;
-    padding:14px;font-family:'JetBrains Mono', monospace;font-size:0.85rem;
+    padding:14px 24px;font-family:'JetBrains Mono', monospace;font-size:0.85rem;
     cursor:pointer;transition:all .25s ease;
   }
   button.primary:hover{background:var(--coral);color:var(--paper);}
   button.primary:disabled{opacity:0.5;cursor:not-allowed;}
+  button.secondary{
+    margin-top:24px;margin-left:10px;
+    background:none;color:var(--paper);border:1px solid var(--line);border-radius:100px;
+    padding:14px 24px;font-family:'JetBrains Mono', monospace;font-size:0.85rem;
+    cursor:pointer;transition:all .25s ease;
+  }
+  button.secondary:hover{border-color:var(--paper);}
   .msg{margin-top:14px;font-size:0.85rem;font-family:'JetBrains Mono', monospace;min-height:18px;}
 
   /* DASHBOARD */
-  #dashboard{display:none;padding:40px 5vw;max-width:900px;margin:0 auto;}
+  #dashboard{display:none;padding:40px 5vw;max-width:960px;margin:0 auto;}
   .section-title{font-family:'Bebas Neue', sans-serif;font-size:2rem;margin-bottom:20px;}
   .panel{
     background:var(--surface);border:1px solid var(--line);border-radius:20px;
@@ -78,7 +85,7 @@
   @media(max-width:640px){.row{grid-template-columns:1fr;}}
 
   table{width:100%;border-collapse:collapse;margin-top:10px;}
-  th, td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-size:0.88rem;}
+  th, td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-size:0.88rem;vertical-align:middle;}
   th{font-family:'JetBrains Mono', monospace;font-size:0.7rem;text-transform:uppercase;color:rgba(244,242,237,0.5);}
   .badge{
     font-family:'JetBrains Mono', monospace;font-size:0.68rem;
@@ -90,9 +97,28 @@
 
   .file-input-wrap{
     border:1px dashed var(--line);border-radius:10px;padding:16px;text-align:center;
-    font-size:0.85rem;color:rgba(244,242,237,0.6);cursor:pointer;
+    font-size:0.85rem;color:rgba(244,242,237,0.6);
   }
-  .file-input-wrap:hover{border-color:var(--paper);}
+
+  .row-actions{display:flex;gap:8px;}
+  .icon-btn{
+    background:none;border:1px solid var(--line);border-radius:8px;
+    padding:6px 12px;color:var(--paper);cursor:pointer;
+    font-family:'JetBrains Mono', monospace;font-size:0.72rem;
+  }
+  .icon-btn:hover{border-color:var(--paper);}
+  .icon-btn.danger:hover{border-color:var(--coral);color:var(--coral);}
+
+  .thumb-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .thumb{position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--line);}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .thumb button{
+    position:absolute;top:2px;right:2px;
+    width:18px;height:18px;border-radius:50%;
+    background:rgba(14,14,18,0.85);border:none;color:var(--coral);
+    font-size:0.7rem;cursor:pointer;line-height:1;
+  }
+  .cover-img{width:44px;height:44px;border-radius:8px;object-fit:cover;}
 </style>
 </head>
 <body>
@@ -120,7 +146,8 @@
 <div id="dashboard">
 
   <div class="panel">
-    <div class="section-title">Nuovo brand</div>
+    <div class="section-title" id="brandFormTitle">Nuovo brand</div>
+    <input type="hidden" id="brandId">
     <div class="row">
       <div>
         <label>Nome brand</label>
@@ -141,15 +168,17 @@
         <select id="brandStatus">
           <option value="draft">Bozza (non visibile)</option>
           <option value="active">Attivo (visibile sul sito)</option>
+          <option value="expired">Scaduto</option>
         </select>
       </div>
     </div>
     <label>Storia / descrizione breve</label>
     <textarea id="brandStory" placeholder="Chi sono, cosa fanno, cosa li rende diversi..."></textarea>
     <label>Logo brand</label>
-    <div class="file-input-wrap" id="logoFileWrap">
-      <input type="file" id="brandLogo" accept="image/*" style="width:auto;border:none;">
+    <div class="file-input-wrap">
+      <input type="file" id="brandLogo" accept="image/*" style="border:none;">
     </div>
+    <div id="currentLogoWrap" class="thumb-row"></div>
     <div class="row">
       <div>
         <label>Link shop</label>
@@ -161,11 +190,13 @@
       </div>
     </div>
     <button class="primary" id="saveBrandBtn">Salva brand</button>
+    <button class="secondary" id="cancelBrandEdit" style="display:none;">Annulla modifica</button>
     <p class="msg" id="brandMsg"></p>
   </div>
 
   <div class="panel">
-    <div class="section-title">Nuovo prodotto</div>
+    <div class="section-title" id="productFormTitle">Nuovo prodotto</div>
+    <input type="hidden" id="productId">
     <label>Brand</label>
     <select id="productBrand"></select>
     <div class="row">
@@ -180,11 +211,13 @@
     </div>
     <label>Descrizione</label>
     <textarea id="productDescription" placeholder="Materiali, dettagli, taglie..."></textarea>
-    <label>Foto prodotto</label>
-    <div class="file-input-wrap" id="fileWrap">
-      <input type="file" id="productImage" accept="image/*" style="width:auto;border:none;">
+    <label>Foto prodotto (puoi selezionarne più di una insieme)</label>
+    <div class="file-input-wrap">
+      <input type="file" id="productImages" accept="image/*" multiple style="border:none;">
     </div>
+    <div id="currentImagesWrap" class="thumb-row"></div>
     <button class="primary" id="saveProductBtn">Salva prodotto</button>
+    <button class="secondary" id="cancelProductEdit" style="display:none;">Annulla modifica</button>
     <p class="msg" id="productMsg"></p>
   </div>
 
@@ -192,9 +225,19 @@
     <div class="section-title">I tuoi brand</div>
     <table id="brandsTable">
       <thead>
-        <tr><th>Nome</th><th>Città</th><th>Stato</th></tr>
+        <tr><th>Nome</th><th>Città</th><th>Stato</th><th></th></tr>
       </thead>
       <tbody id="brandsTableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <div class="section-title">I tuoi prodotti</div>
+    <table id="productsTable">
+      <thead>
+        <tr><th>Foto</th><th>Brand</th><th>Prodotto</th><th>Prezzo</th><th></th></tr>
+      </thead>
+      <tbody id="productsTableBody"></tbody>
     </table>
   </div>
 
@@ -208,6 +251,9 @@
   const loginScreen = document.getElementById('loginScreen');
   const dashboard = document.getElementById('dashboard');
   const logoutBtn = document.getElementById('logoutBtn');
+
+  let allBrandsCache = [];
+  let allProductsCache = [];
 
   function slugify(text){
     return text.toString().toLowerCase().trim()
@@ -251,10 +297,43 @@
     dashboard.style.display = 'block';
     logoutBtn.style.display = 'inline-block';
     loadBrands();
+    loadProducts();
   }
 
-  // ---------- SALVA BRAND ----------
+  // ---------- FORM BRAND: reset / carica per modifica ----------
+  function resetBrandForm(){
+    document.getElementById('brandId').value = '';
+    document.getElementById('brandFormTitle').textContent = 'Nuovo brand';
+    ['brandName','brandCity','brandCategory','brandStory','brandShop','brandInstagram'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('brandStatus').value = 'draft';
+    document.getElementById('brandLogo').value = '';
+    document.getElementById('currentLogoWrap').innerHTML = '';
+    document.getElementById('saveBrandBtn').textContent = 'Salva brand';
+    document.getElementById('cancelBrandEdit').style.display = 'none';
+  }
+
+  function loadBrandIntoForm(brand){
+    document.getElementById('brandId').value = brand.id;
+    document.getElementById('brandFormTitle').textContent = 'Modifica: ' + brand.name;
+    document.getElementById('brandName').value = brand.name || '';
+    document.getElementById('brandCity').value = brand.city || '';
+    document.getElementById('brandCategory').value = brand.category || '';
+    document.getElementById('brandStory').value = brand.story || '';
+    document.getElementById('brandShop').value = brand.shop_url || '';
+    document.getElementById('brandInstagram').value = brand.instagram_url || '';
+    document.getElementById('brandStatus').value = brand.status || 'draft';
+    document.getElementById('currentLogoWrap').innerHTML = brand.logo_url
+      ? `<div class="thumb"><img src="${brand.logo_url}"></div>` : '';
+    document.getElementById('saveBrandBtn').textContent = 'Aggiorna brand';
+    document.getElementById('cancelBrandEdit').style.display = 'inline-block';
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  document.getElementById('cancelBrandEdit').addEventListener('click', resetBrandForm);
+
+  // ---------- SALVA / AGGIORNA BRAND ----------
   document.getElementById('saveBrandBtn').addEventListener('click', async () => {
+    const id = document.getElementById('brandId').value;
     const name = document.getElementById('brandName').value.trim();
     const city = document.getElementById('brandCity').value.trim();
     const category = document.getElementById('brandCategory').value.trim();
@@ -274,28 +353,37 @@
     msg.style.color = 'rgba(244,242,237,0.6)';
     msg.textContent = 'Salvataggio...';
 
-    const slug = slugify(name) + '-' + Math.random().toString(36).slice(2,6);
-
     try {
-      let logo_url = null;
+      let logo_url;
       if(logoInput.files.length > 0){
         const file = logoInput.files[0];
-        const path = `logos/${slug}-${Date.now()}-${file.name}`;
+        const path = `logos/${slugify(name)}-${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabaseClient.storage.from('brand-images').upload(path, file);
         if(uploadError) throw uploadError;
         const { data: urlData } = supabaseClient.storage.from('brand-images').getPublicUrl(path);
         logo_url = urlData.publicUrl;
       }
 
-      const { error } = await supabaseClient.from('brands').insert({
-        name, city, category, status, story, shop_url, instagram_url, slug, logo_url
-      });
-      if(error) throw error;
+      if(id){
+        // AGGIORNAMENTO
+        const payload = { name, city, category, status, story, shop_url, instagram_url };
+        if(logo_url) payload.logo_url = logo_url;
+        const { error } = await supabaseClient.from('brands').update(payload).eq('id', id);
+        if(error) throw error;
+        msg.style.color = 'var(--gold)';
+        msg.textContent = 'Brand aggiornato!';
+      } else {
+        // NUOVO
+        const slug = slugify(name) + '-' + Math.random().toString(36).slice(2,6);
+        const { error } = await supabaseClient.from('brands').insert({
+          name, city, category, status, story, shop_url, instagram_url, slug, logo_url: logo_url || null
+        });
+        if(error) throw error;
+        msg.style.color = 'var(--gold)';
+        msg.textContent = 'Brand salvato!';
+      }
 
-      msg.style.color = 'var(--gold)';
-      msg.textContent = 'Brand salvato!';
-      ['brandName','brandCity','brandCategory','brandStory','brandShop','brandInstagram'].forEach(id => document.getElementById(id).value = '');
-      logoInput.value = '';
+      resetBrandForm();
       loadBrands();
     } catch(err){
       msg.style.color = 'var(--coral)';
@@ -303,19 +391,42 @@
     }
   });
 
+  // ---------- ELIMINA BRAND ----------
+  async function deleteBrand(id, name){
+    if(!confirm(`Eliminare "${name}"? Verranno eliminati anche tutti i suoi prodotti.`)) return;
+    const { error } = await supabaseClient.from('brands').delete().eq('id', id);
+    if(error){
+      alert('Errore durante l\'eliminazione: ' + error.message);
+      return;
+    }
+    loadBrands();
+    loadProducts();
+  }
+
   // ---------- CARICA BRAND (tabella + select prodotti) ----------
   async function loadBrands(){
     const { data, error } = await supabaseClient.from('brands').select('*').order('created_at', { ascending: false });
     if(error) return;
+    allBrandsCache = data;
 
     const tbody = document.getElementById('brandsTableBody');
     tbody.innerHTML = '';
     const select = document.getElementById('productBrand');
+    const currentSelection = select.value;
     select.innerHTML = '';
 
     data.forEach(brand => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${brand.name}</td><td>${brand.city || '—'}</td><td><span class="badge ${brand.status}">${brand.status}</span></td>`;
+      tr.innerHTML = `
+        <td>${brand.name}</td>
+        <td>${brand.city || '—'}</td>
+        <td><span class="badge ${brand.status}">${brand.status}</span></td>
+        <td>
+          <div class="row-actions">
+            <button class="icon-btn" data-edit-brand="${brand.id}">Modifica</button>
+            <button class="icon-btn danger" data-delete-brand="${brand.id}">Elimina</button>
+          </div>
+        </td>`;
       tbody.appendChild(tr);
 
       const opt = document.createElement('option');
@@ -323,15 +434,73 @@
       opt.textContent = brand.name;
       select.appendChild(opt);
     });
+
+    if(currentSelection) select.value = currentSelection;
+
+    tbody.querySelectorAll('[data-edit-brand]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const brand = allBrandsCache.find(b => b.id === btn.dataset.editBrand);
+        if(brand) loadBrandIntoForm(brand);
+      });
+    });
+    tbody.querySelectorAll('[data-delete-brand]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const brand = allBrandsCache.find(b => b.id === btn.dataset.deleteBrand);
+        if(brand) deleteBrand(brand.id, brand.name);
+      });
+    });
   }
 
-  // ---------- SALVA PRODOTTO ----------
+  // ---------- FORM PRODOTTO: reset / carica per modifica ----------
+  function resetProductForm(){
+    document.getElementById('productId').value = '';
+    document.getElementById('productFormTitle').textContent = 'Nuovo prodotto';
+    ['productName','productPrice','productDescription'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('productImages').value = '';
+    document.getElementById('currentImagesWrap').innerHTML = '';
+    document.getElementById('saveProductBtn').textContent = 'Salva prodotto';
+    document.getElementById('cancelProductEdit').style.display = 'none';
+  }
+
+  async function loadProductIntoForm(product){
+    document.getElementById('productId').value = product.id;
+    document.getElementById('productFormTitle').textContent = 'Modifica: ' + product.name;
+    document.getElementById('productBrand').value = product.brand_id;
+    document.getElementById('productName').value = product.name || '';
+    document.getElementById('productPrice').value = product.price || '';
+    document.getElementById('productDescription').value = product.description || '';
+    document.getElementById('saveProductBtn').textContent = 'Aggiorna prodotto';
+    document.getElementById('cancelProductEdit').style.display = 'inline-block';
+
+    const { data: images } = await supabaseClient.from('product_images').select('*').eq('product_id', product.id).order('sort_order');
+    const wrap = document.getElementById('currentImagesWrap');
+    wrap.innerHTML = '';
+    (images || []).forEach(img => {
+      const div = document.createElement('div');
+      div.className = 'thumb';
+      div.innerHTML = `<img src="${img.image_url}"><button data-remove-image="${img.id}">✕</button>`;
+      wrap.appendChild(div);
+    });
+    wrap.querySelectorAll('[data-remove-image]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        await supabaseClient.from('product_images').delete().eq('id', btn.dataset.removeImage);
+        btn.parentElement.remove();
+      });
+    });
+
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  document.getElementById('cancelProductEdit').addEventListener('click', resetProductForm);
+
+  // ---------- SALVA / AGGIORNA PRODOTTO ----------
   document.getElementById('saveProductBtn').addEventListener('click', async () => {
+    const id = document.getElementById('productId').value;
     const brand_id = document.getElementById('productBrand').value;
     const name = document.getElementById('productName').value.trim();
     const price = document.getElementById('productPrice').value;
     const description = document.getElementById('productDescription').value.trim();
-    const fileInput = document.getElementById('productImage');
+    const filesInput = document.getElementById('productImages');
     const msg = document.getElementById('productMsg');
 
     if(!brand_id || !name){
@@ -343,32 +512,98 @@
     msg.style.color = 'rgba(244,242,237,0.6)';
     msg.textContent = 'Salvataggio...';
 
-    let image_url = null;
-
     try {
-      if(fileInput.files.length > 0){
-        const file = fileInput.files[0];
-        const path = `${brand_id}/${Date.now()}-${file.name}`;
-        const { error: uploadError } = await supabaseClient.storage.from('brand-images').upload(path, file);
-        if(uploadError) throw uploadError;
-        const { data: urlData } = supabaseClient.storage.from('brand-images').getPublicUrl(path);
-        image_url = urlData.publicUrl;
+      let productId = id;
+
+      if(id){
+        const { error } = await supabaseClient.from('products')
+          .update({ brand_id, name, price: price || null, description })
+          .eq('id', id);
+        if(error) throw error;
+      } else {
+        const { data, error } = await supabaseClient.from('products')
+          .insert({ brand_id, name, price: price || null, description })
+          .select().single();
+        if(error) throw error;
+        productId = data.id;
       }
 
-      const { error } = await supabaseClient.from('products').insert({
-        brand_id, name, price: price || null, description, image_url
-      });
-      if(error) throw error;
+      // Carica ed associa tutte le foto selezionate
+      if(filesInput.files.length > 0){
+        for(let i = 0; i < filesInput.files.length; i++){
+          const file = filesInput.files[i];
+          const path = `${brand_id}/${productId}/${Date.now()}-${i}-${file.name}`;
+          const { error: uploadError } = await supabaseClient.storage.from('brand-images').upload(path, file);
+          if(uploadError) throw uploadError;
+          const { data: urlData } = supabaseClient.storage.from('brand-images').getPublicUrl(path);
+          await supabaseClient.from('product_images').insert({ product_id: productId, image_url: urlData.publicUrl, sort_order: i });
+        }
+      }
 
       msg.style.color = 'var(--gold)';
-      msg.textContent = 'Prodotto salvato!';
-      ['productName','productPrice','productDescription'].forEach(id => document.getElementById(id).value = '');
-      fileInput.value = '';
+      msg.textContent = id ? 'Prodotto aggiornato!' : 'Prodotto salvato!';
+      resetProductForm();
+      loadProducts();
     } catch(err){
       msg.style.color = 'var(--coral)';
       msg.textContent = 'Errore: ' + err.message;
     }
   });
+
+  // ---------- ELIMINA PRODOTTO ----------
+  async function deleteProduct(id, name){
+    if(!confirm(`Eliminare "${name}"? Verranno eliminate anche tutte le sue foto.`)) return;
+    const { error } = await supabaseClient.from('products').delete().eq('id', id);
+    if(error){
+      alert('Errore durante l\'eliminazione: ' + error.message);
+      return;
+    }
+    loadProducts();
+  }
+
+  // ---------- CARICA PRODOTTI (tabella) ----------
+  async function loadProducts(){
+    const { data: products, error } = await supabaseClient
+      .from('products')
+      .select('*, brands(name), product_images(image_url, sort_order)')
+      .order('created_at', { ascending: false });
+    if(error) return;
+    allProductsCache = products;
+
+    const tbody = document.getElementById('productsTableBody');
+    tbody.innerHTML = '';
+
+    products.forEach(product => {
+      const images = (product.product_images || []).sort((a,b) => a.sort_order - b.sort_order);
+      const cover = images.length > 0 ? images[0].image_url : null;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${cover ? `<img class="cover-img" src="${cover}">` : '—'}</td>
+        <td>${product.brands ? product.brands.name : '—'}</td>
+        <td>${product.name}</td>
+        <td>${product.price ? '€' + Number(product.price).toFixed(2) : '—'}</td>
+        <td>
+          <div class="row-actions">
+            <button class="icon-btn" data-edit-product="${product.id}">Modifica</button>
+            <button class="icon-btn danger" data-delete-product="${product.id}">Elimina</button>
+          </div>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('[data-edit-product]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const product = allProductsCache.find(p => p.id === btn.dataset.editProduct);
+        if(product) loadProductIntoForm(product);
+      });
+    });
+    tbody.querySelectorAll('[data-delete-product]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const product = allProductsCache.find(p => p.id === btn.dataset.deleteProduct);
+        if(product) deleteProduct(product.id, product.name);
+      });
+    });
+  }
 
   checkSession();
 </script>

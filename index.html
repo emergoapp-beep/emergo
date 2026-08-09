@@ -329,6 +329,48 @@
   .drop-card-body h4{font-size:0.95rem;font-weight:600;margin-bottom:4px;}
   .drop-card-body .drop-price{font-family:'JetBrains Mono', monospace;font-size:0.8rem;color:var(--gold);}
 
+  /* ---------- PRODUCT LIGHTBOX ---------- */
+  .lightbox-overlay{
+    position:fixed;inset:0;
+    background:rgba(0,0,0,0.92);
+    z-index:300;
+    display:none;
+    align-items:center;justify-content:center;
+    padding:40px 5vw;
+  }
+  .lightbox-overlay.open{display:flex;}
+  .lightbox-box{max-width:520px;width:100%;position:relative;}
+  .lightbox-image-wrap{
+    position:relative;width:100%;aspect-ratio:4/5;border-radius:16px;overflow:hidden;
+    background:var(--surface);
+  }
+  .lightbox-image-wrap img{width:100%;height:100%;object-fit:cover;display:block;}
+  .lightbox-nav{
+    position:absolute;top:50%;transform:translateY(-50%);
+    width:44px;height:44px;border-radius:50%;
+    background:rgba(14,14,18,0.7);border:1px solid var(--line);
+    color:var(--paper);font-size:1.2rem;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .lightbox-nav:hover{background:var(--coral);}
+  .lightbox-prev{left:12px;}
+  .lightbox-next{right:12px;}
+  .lightbox-close{
+    position:absolute;top:-48px;right:0;
+    width:36px;height:36px;border-radius:50%;
+    background:var(--surface-2);border:1px solid var(--line);
+    color:var(--paper);font-size:1.1rem;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .lightbox-close:hover{background:var(--coral);}
+  .lightbox-info{padding:16px 4px 0;}
+  .lightbox-info h4{font-family:'Bebas Neue', sans-serif;font-size:1.6rem;}
+  .lightbox-info .drop-price{font-family:'JetBrains Mono', monospace;color:var(--gold);}
+  .lightbox-dots{display:flex;gap:6px;justify-content:center;margin-top:14px;}
+  .lightbox-dot{width:6px;height:6px;border-radius:50%;background:rgba(244,242,237,0.25);}
+  .lightbox-dot.active{background:var(--paper);}
+  .drop-card{cursor:pointer;}
+
   /* ---------- FOR BRANDS ---------- */
   .brand-section{
     background:var(--surface);
@@ -442,6 +484,22 @@
   <div class="logo">EMERGO</div>
   <a href="#waitlist" class="nav-cta">Entra in vetrina</a>
 </nav>
+
+<div class="lightbox-overlay" id="lightboxOverlay">
+  <div class="lightbox-box">
+    <button class="lightbox-close" id="lightboxClose">✕</button>
+    <div class="lightbox-image-wrap">
+      <img id="lightboxImage" src="" alt="">
+      <button class="lightbox-nav lightbox-prev" id="lightboxPrev">‹</button>
+      <button class="lightbox-nav lightbox-next" id="lightboxNext">›</button>
+    </div>
+    <div class="lightbox-info">
+      <h4 id="lightboxName"></h4>
+      <span class="drop-price" id="lightboxPrice"></span>
+      <div class="lightbox-dots" id="lightboxDots"></div>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="brandModal">
   <div class="modal-box">
@@ -667,7 +725,7 @@
 
     const { data: products, error } = await supabaseClient
       .from('products')
-      .select('name, description, price, image_url')
+      .select('id, name, description, price, product_images(image_url, sort_order)')
       .eq('brand_id', brandId)
       .order('created_at', { ascending: false });
 
@@ -677,15 +735,24 @@
       return;
     }
 
-    dropsGrid.innerHTML = products.map(p => `
-      <div class="drop-card">
-        ${p.image_url ? `<img src="${p.image_url}" alt="${p.name}">` : ''}
+    currentDropProducts = products.map(p => ({
+      ...p,
+      images: (p.product_images || []).sort((a,b) => a.sort_order - b.sort_order).map(img => img.image_url)
+    }));
+
+    dropsGrid.innerHTML = currentDropProducts.map((p, i) => `
+      <div class="drop-card" data-product-index="${i}">
+        ${p.images[0] ? `<img src="${p.images[0]}" alt="${p.name}">` : ''}
         <div class="drop-card-body">
           <h4>${p.name}</h4>
           ${p.price ? `<span class="drop-price">€${Number(p.price).toFixed(2)}</span>` : ''}
         </div>
       </div>
     `).join('');
+
+    dropsGrid.querySelectorAll('[data-product-index]').forEach(el => {
+      el.addEventListener('click', () => openLightbox(parseInt(el.dataset.productIndex)));
+    });
   }
 
   document.getElementById('modalClose').addEventListener('click', () => {
@@ -693,6 +760,58 @@
   });
   document.getElementById('brandModal').addEventListener('click', (e) => {
     if(e.target.id === 'brandModal') e.target.classList.remove('open');
+  });
+
+  // ---------- LIGHTBOX: scorrimento foto prodotto ----------
+  let currentDropProducts = [];
+  let currentProductIndex = 0;
+  let currentImageIndex = 0;
+
+  function openLightbox(productIndex){
+    currentProductIndex = productIndex;
+    currentImageIndex = 0;
+    renderLightbox();
+    document.getElementById('lightboxOverlay').classList.add('open');
+  }
+
+  function renderLightbox(){
+    const product = currentDropProducts[currentProductIndex];
+    if(!product) return;
+    const images = product.images.length > 0 ? product.images : [];
+
+    document.getElementById('lightboxImage').src = images[currentImageIndex] || '';
+    document.getElementById('lightboxName').textContent = product.name;
+    document.getElementById('lightboxPrice').textContent = product.price ? `€${Number(product.price).toFixed(2)}` : '';
+
+    const dotsWrap = document.getElementById('lightboxDots');
+    dotsWrap.innerHTML = images.map((_, i) => `<span class="lightbox-dot ${i === currentImageIndex ? 'active' : ''}"></span>`).join('');
+
+    const showNav = images.length > 1;
+    document.getElementById('lightboxPrev').style.display = showNav ? 'flex' : 'none';
+    document.getElementById('lightboxNext').style.display = showNav ? 'flex' : 'none';
+  }
+
+  document.getElementById('lightboxPrev').addEventListener('click', () => {
+    const images = currentDropProducts[currentProductIndex].images;
+    currentImageIndex = (currentImageIndex - 1 + images.length) % images.length;
+    renderLightbox();
+  });
+  document.getElementById('lightboxNext').addEventListener('click', () => {
+    const images = currentDropProducts[currentProductIndex].images;
+    currentImageIndex = (currentImageIndex + 1) % images.length;
+    renderLightbox();
+  });
+  document.getElementById('lightboxClose').addEventListener('click', () => {
+    document.getElementById('lightboxOverlay').classList.remove('open');
+  });
+  document.getElementById('lightboxOverlay').addEventListener('click', (e) => {
+    if(e.target.id === 'lightboxOverlay') e.target.classList.remove('open');
+  });
+  document.addEventListener('keydown', (e) => {
+    if(!document.getElementById('lightboxOverlay').classList.contains('open')) return;
+    if(e.key === 'ArrowLeft') document.getElementById('lightboxPrev').click();
+    if(e.key === 'ArrowRight') document.getElementById('lightboxNext').click();
+    if(e.key === 'Escape') document.getElementById('lightboxOverlay').classList.remove('open');
   });
 
   loadBrandGrid();
