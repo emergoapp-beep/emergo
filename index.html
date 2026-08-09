@@ -371,6 +371,34 @@
   .lightbox-dot.active{background:var(--paper);}
   .drop-card{cursor:pointer;}
 
+  /* ---------- LATEST ARRIVALS (homepage) ---------- */
+  .latest-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
+    gap:20px;
+  }
+  .latest-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:16px;
+    overflow:hidden;
+    text-decoration:none;
+    color:var(--paper);
+    display:block;
+    transition: transform .25s ease, border-color .25s ease;
+  }
+  .latest-card:hover{transform:translateY(-4px);border-color:rgba(244,242,237,0.35);}
+  .latest-card-img{width:100%;height:220px;object-fit:cover;display:block;background:var(--surface-2);}
+  .latest-card-body{padding:16px 18px;}
+  .latest-card-brand{
+    display:flex;align-items:center;gap:8px;
+    font-family:'JetBrains Mono', monospace;font-size:0.7rem;
+    color:rgba(244,242,237,0.5);margin-bottom:6px;
+  }
+  .latest-card-brand img{width:18px;height:18px;border-radius:50%;object-fit:cover;}
+  .latest-card-name{font-size:1rem;font-weight:600;margin-bottom:4px;}
+  .latest-card-price{font-family:'JetBrains Mono', monospace;font-size:0.82rem;color:var(--gold);}
+
   /* ---------- FOR BRANDS ---------- */
   .brand-section{
     background:var(--surface);
@@ -545,6 +573,16 @@
   </div>
   <div class="grid reveal visible" id="cardGrid">
     <p style="color:rgba(244,242,237,0.5); font-family:'JetBrains Mono', monospace; font-size:0.85rem;">Caricamento brand...</p>
+  </div>
+</section>
+
+<section id="ultimi-arrivi">
+  <div class="section-head reveal">
+    <span class="eyebrow">Appena arrivati</span>
+    <h2>Gli ultimi pezzi caricati.</h2>
+  </div>
+  <div class="latest-grid reveal visible" id="latestGrid">
+    <p style="color:rgba(244,242,237,0.5); font-family:'JetBrains Mono', monospace; font-size:0.85rem;">Caricamento...</p>
   </div>
 </section>
 
@@ -814,7 +852,54 @@
     if(e.key === 'Escape') document.getElementById('lightboxOverlay').classList.remove('open');
   });
 
+  // Carica gli ultimi prodotti aggiunti (di tutti i brand attivi) per la sezione "Appena arrivati"
+  async function loadLatestArrivals(){
+    const grid = document.getElementById('latestGrid');
+    const { data: products, error } = await supabaseClient
+      .from('products')
+      .select('id, name, price, brand_id, product_images(image_url, sort_order), brands!inner(name, logo_url, shop_url, status)')
+      .eq('brands.status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(8);
+
+    if(error || !products || products.length === 0){
+      grid.innerHTML = `<p style="color:rgba(244,242,237,0.5); font-family:'JetBrains Mono', monospace; font-size:0.85rem;">I primi pezzi arrivano a breve.</p>`;
+      return;
+    }
+
+    grid.innerHTML = products.map(p => {
+      const images = (p.product_images || []).sort((a,b) => a.sort_order - b.sort_order);
+      const cover = images.length > 0 ? images[0].image_url : '';
+      const brand = p.brands;
+      const link = brand.shop_url || '#';
+      return `
+        <a href="${link}" target="${brand.shop_url ? '_blank' : '_self'}" rel="noopener" class="latest-card" data-brand-id="${p.brand_id}">
+          ${cover ? `<img class="latest-card-img" src="${cover}" alt="${p.name}">` : ''}
+          <div class="latest-card-body">
+            <div class="latest-card-brand">
+              ${brand.logo_url ? `<img src="${brand.logo_url}" alt="${brand.name}">` : ''}
+              <span>${brand.name}</span>
+            </div>
+            <div class="latest-card-name">${p.name}</div>
+            ${p.price ? `<div class="latest-card-price">€${Number(p.price).toFixed(2)}</div>` : ''}
+          </div>
+        </a>
+      `;
+    }).join('');
+
+    // Se il brand non ha un link shop esterno, il click apre la scheda brand su Emergo
+    grid.querySelectorAll('.latest-card').forEach(el => {
+      if(el.getAttribute('href') === '#'){
+        el.addEventListener('click', (e) => {
+          e.preventDefault();
+          openBrandModal(el.dataset.brandId);
+        });
+      }
+    });
+  }
+
   loadBrandGrid();
+  loadLatestArrivals();
 
   // Waitlist toggle
   let currentType = 'utente';
