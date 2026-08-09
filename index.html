@@ -4,6 +4,24 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Emergo — Brand italiani emergenti</title>
+<meta name="description" content="La vetrina dei brand di moda italiani emergenti. Scopri nuovi drop prima che li conoscano tutti.">
+
+<!-- Open Graph (anteprima su WhatsApp, Instagram, Facebook) -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Emergo — Brand italiani emergenti">
+<meta property="og:description" content="La vetrina dei brand di moda italiani emergenti. Scopri nuovi drop prima che li conoscano tutti.">
+<meta property="og:image" content="https://emergo-eosin.vercel.app/og-image.jpg">
+<meta property="og:url" content="https://emergo-eosin.vercel.app/">
+
+<!-- Twitter/X Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Emergo — Brand italiani emergenti">
+<meta name="twitter:description" content="La vetrina dei brand di moda italiani emergenti.">
+<meta name="twitter:image" content="https://emergo-eosin.vercel.app/og-image.jpg">
+
+<!-- Favicon (monogramma E, nessun file esterno necessario) -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230e0e12'/%3E%3Ctext x='50' y='68' font-family='Arial Black, sans-serif' font-size='60' font-weight='900' fill='%23ff4d6d' text-anchor='middle'%3EE%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#0e0e12">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -319,6 +337,19 @@
     perspective:1200px;
   }
 
+  .filter-bar{
+    display:flex;flex-wrap:wrap;gap:10px;margin-bottom:28px;
+  }
+  .filter-pill{
+    font-family:'JetBrains Mono', monospace;font-size:0.75rem;
+    padding:9px 18px;border-radius:100px;
+    border:1px solid var(--line);
+    background:none;color:rgba(244,242,237,0.65);
+    cursor:pointer;transition:all .2s ease;
+  }
+  .filter-pill:hover{border-color:rgba(244,242,237,0.4);color:var(--paper);}
+  .filter-pill.active{background:var(--paper);color:var(--ink);border-color:var(--paper);}
+
   .card{
     background:linear-gradient(160deg, var(--surface-2), var(--surface));
     border:1px solid var(--line);
@@ -625,6 +656,24 @@
   }
   .foot-links a:hover{color:var(--coral);}
 
+  /* ---------- COOKIE BAR ---------- */
+  .cookie-bar{
+    position:fixed;bottom:0;left:0;right:0;
+    background:var(--surface);border-top:1px solid var(--line);
+    padding:18px 6vw;
+    display:none;
+    align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;
+    z-index:120;
+  }
+  .cookie-bar.show{display:flex;}
+  .cookie-bar p{font-size:0.82rem;color:rgba(244,242,237,0.75);margin:0;}
+  .cookie-bar a{color:var(--coral);}
+  .cookie-bar button{
+    font-family:'JetBrains Mono', monospace;font-size:0.78rem;
+    background:var(--paper);color:var(--ink);border:none;border-radius:100px;
+    padding:10px 22px;cursor:pointer;white-space:nowrap;
+  }
+
   @media (prefers-reduced-motion: reduce){
     *{animation:none !important;transition:none !important;}
   }
@@ -744,6 +793,7 @@
     <span class="eyebrow">In vetrina questa settimana</span>
     <h2>Nuovi drop, prima che li trovi altrove.</h2>
   </div>
+  <div class="filter-bar reveal visible" id="filterBar"></div>
   <div class="grid reveal visible" id="cardGrid">
     <p style="color:rgba(244,242,237,0.5); font-family:'JetBrains Mono', monospace; font-size:0.85rem;">Caricamento brand...</p>
   </div>
@@ -785,9 +835,16 @@
   <div class="foot-links">
     <a href="https://www.instagram.com/emergo2026" target="_blank" rel="noopener">Instagram</a>
     <a href="https://www.tiktok.com/@emergo.app" target="_blank" rel="noopener">TikTok</a>
-    <a href="#">Contatti</a>
+    <a href="#" id="footerContacts">Contatti</a>
+    <a href="/privacy.html">Privacy</a>
   </div>
 </footer>
+
+<!-- Cookie / privacy notice -->
+<div class="cookie-bar" id="cookieBar">
+  <p>Usiamo solo dati essenziali (email che ci lasci tu) — nessun tracciamento pubblicitario. <a href="/privacy.html">Scopri di più</a></p>
+  <button id="cookieAccept">Ho capito</button>
+</div>
 
 <script>
   // Hero blob follows cursor
@@ -853,23 +910,66 @@
 
   // Carica i brand attivi dal database e li mostra in griglia (solo logo + nome)
   let allBrands = [];
+  let activeCategoryFilter = 'tutti';
 
   async function loadBrandGrid(){
     const grid = document.getElementById('cardGrid');
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Un brand è visibile solo se attivo E (nessuna scadenza impostata OPPURE la scadenza non è ancora passata)
     const { data: brands, error } = await supabaseClient
       .from('brands')
-      .select('id, name, city, category, story, logo_url, shop_url, instagram_url')
+      .select('id, name, city, category, story, logo_url, shop_url, instagram_url, featured_until')
       .eq('status', 'active')
+      .or(`featured_until.is.null,featured_until.gte.${today}`)
       .order('created_at', { ascending: false });
 
     if(error || !brands || brands.length === 0){
       grid.innerHTML = `<p style="color:rgba(244,242,237,0.5); font-family:'JetBrains Mono', monospace; font-size:0.85rem;">I primi brand arrivano a breve — iscriviti alla waitlist per essere avvisato.</p>`;
+      document.getElementById('filterBar').innerHTML = '';
       return;
     }
 
     allBrands = brands;
+    buildFilterBar();
+    renderBrandGrid();
+  }
+
+  function buildFilterBar(){
+    const categories = [...new Set(allBrands.map(b => b.category).filter(Boolean))];
+    const bar = document.getElementById('filterBar');
+    if(categories.length <= 1){ bar.innerHTML = ''; return; }
+
+    const pills = ['tutti', ...categories];
+    bar.innerHTML = pills.map(cat => `
+      <button class="filter-pill ${cat === activeCategoryFilter ? 'active' : ''}" data-filter="${cat}">
+        ${cat === 'tutti' ? 'Tutti' : cat}
+      </button>
+    `).join('');
+
+    bar.querySelectorAll('[data-filter]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeCategoryFilter = btn.dataset.filter;
+        bar.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        renderBrandGrid();
+      });
+    });
+  }
+
+  function renderBrandGrid(){
+    const grid = document.getElementById('cardGrid');
+    const filtered = activeCategoryFilter === 'tutti'
+      ? allBrands
+      : allBrands.filter(b => b.category === activeCategoryFilter);
+
+    if(filtered.length === 0){
+      grid.innerHTML = `<p style="color:rgba(244,242,237,0.5); font-family:'JetBrains Mono', monospace; font-size:0.85rem;">Nessun brand in questa categoria per ora.</p>`;
+      return;
+    }
+
     grid.innerHTML = '';
-    brands.forEach((brand, i) => {
+    filtered.forEach((brand, i) => {
       const dropNumber = String(i + 1).padStart(2, '0');
       const initials = brand.name.slice(0, 2).toUpperCase();
       const card = document.createElement('div');
@@ -1022,10 +1122,12 @@
 
   async function loadLatestArrivals(){
     const grid = document.getElementById('latestGrid');
+    const today = new Date().toISOString().slice(0, 10);
     const { data, error } = await supabaseClient
       .from('products')
-      .select('id, name, price, brand_id, product_images(image_url, sort_order), brands!inner(name, logo_url, shop_url, status)')
+      .select('id, name, price, brand_id, product_images(image_url, sort_order), brands!inner(name, logo_url, shop_url, status, featured_until)')
       .eq('brands.status', 'active')
+      .or(`featured_until.is.null,featured_until.gte.${today}`, { foreignTable: 'brands' })
       .order('created_at', { ascending: false })
       .limit(16);
 
@@ -1131,6 +1233,22 @@
     sideMenu.classList.contains('open') ? closeSideMenu() : openSideMenu();
   });
   document.getElementById('heroMenuOpen').addEventListener('click', openSideMenu);
+  document.getElementById('footerContacts').addEventListener('click', (e) => {
+    e.preventDefault();
+    openSideMenu();
+  });
+
+  // ---------- COOKIE BAR ----------
+  function getCookie(name){
+    return document.cookie.split('; ').find(row => row.startsWith(name + '='));
+  }
+  if(!getCookie('emergo_cookie_ok')){
+    document.getElementById('cookieBar').classList.add('show');
+  }
+  document.getElementById('cookieAccept').addEventListener('click', () => {
+    document.cookie = 'emergo_cookie_ok=1; max-age=' + (60*60*24*365) + '; path=/';
+    document.getElementById('cookieBar').classList.remove('show');
+  });
   document.getElementById('sideMenuClose').addEventListener('click', closeSideMenu);
   menuBackdrop.addEventListener('click', closeSideMenu);
   document.addEventListener('keydown', (e) => {
