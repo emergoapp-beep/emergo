@@ -97,6 +97,14 @@
   .delete-btn:hover{background:var(--coral);color:var(--paper);border-color:var(--coral);}
   .delete-btn:disabled{opacity:0.5;cursor:not-allowed;}
 
+  .edit-btn{
+    font-family:'JetBrains Mono', monospace;font-size:0.72rem;
+    border:1px solid var(--line);color:var(--paper);
+    background:none;padding:6px 14px;border-radius:100px;cursor:pointer;
+    transition:all .2s ease;
+  }
+  .edit-btn:hover{border-color:var(--paper);}
+
   .file-input-wrap{
     border:1px dashed var(--line);border-radius:10px;padding:16px;text-align:center;
     font-size:0.85rem;color:rgba(244,242,237,0.6);cursor:pointer;
@@ -129,7 +137,7 @@
 <div id="dashboard">
 
   <div class="panel">
-    <div class="section-title">Nuovo brand</div>
+    <div class="section-title" id="brandFormTitle">Nuovo brand</div>
     <div class="row">
       <div>
         <label>Nome brand</label>
@@ -166,10 +174,14 @@
       </div>
     </div>
     <label>Logo brand (mostrato nella card in vetrina)</label>
+    <p id="currentLogoNote" style="display:none;font-size:0.8rem;color:rgba(244,242,237,0.5);margin-bottom:8px;">Logo attuale caricato — seleziona un file solo se vuoi sostituirlo.</p>
     <div class="file-input-wrap" id="logoFileWrap">
       <input type="file" id="brandLogo" accept="image/*" style="width:auto;border:none;">
     </div>
-    <button class="primary" id="saveBrandBtn">Salva brand</button>
+    <div style="display:flex;gap:12px;align-items:center;">
+      <button class="primary" id="saveBrandBtn" style="flex:1;">Salva brand</button>
+      <button id="cancelEditBtn" style="display:none;background:none;border:1px solid var(--line);color:var(--paper);border-radius:100px;padding:14px 22px;font-family:'JetBrains Mono', monospace;font-size:0.8rem;cursor:pointer;white-space:nowrap;">Annulla</button>
+    </div>
     <p class="msg" id="brandMsg"></p>
   </div>
 
@@ -291,7 +303,56 @@
     loadProducts();
   }
 
-  // ---------- SALVA BRAND ----------
+  // ---------- STATO MODIFICA BRAND ----------
+  let editingBrandId = null;
+  let editingBrandSlug = null;
+  let editingBrandLogoUrl = null;
+
+  const brandFormTitle = document.getElementById('brandFormTitle');
+  const currentLogoNote = document.getElementById('currentLogoNote');
+  const cancelEditBtn = document.getElementById('cancelEditBtn');
+  const saveBrandBtn = document.getElementById('saveBrandBtn');
+
+  function enterEditMode(brand){
+    editingBrandId = brand.id;
+    editingBrandSlug = brand.slug;
+    editingBrandLogoUrl = brand.logo_url || null;
+
+    document.getElementById('brandName').value = brand.name || '';
+    document.getElementById('brandCity').value = brand.city || '';
+    document.getElementById('brandCategory').value = brand.category || '';
+    document.getElementById('brandStatus').value = brand.status || 'draft';
+    document.getElementById('brandStory').value = brand.story || '';
+    document.getElementById('brandShop').value = brand.shop_url || '';
+    document.getElementById('brandInstagram').value = brand.instagram_url || '';
+    document.getElementById('brandLogo').value = '';
+
+    brandFormTitle.textContent = `Modifica brand — ${brand.name}`;
+    saveBrandBtn.textContent = 'Aggiorna brand';
+    cancelEditBtn.style.display = 'inline-block';
+    currentLogoNote.style.display = brand.logo_url ? 'block' : 'none';
+
+    document.getElementById('brandName').closest('.panel').scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+
+  function exitEditMode(){
+    editingBrandId = null;
+    editingBrandSlug = null;
+    editingBrandLogoUrl = null;
+
+    ['brandName','brandCity','brandCategory','brandStory','brandShop','brandInstagram'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('brandStatus').value = 'draft';
+    document.getElementById('brandLogo').value = '';
+
+    brandFormTitle.textContent = 'Nuovo brand';
+    saveBrandBtn.textContent = 'Salva brand';
+    cancelEditBtn.style.display = 'none';
+    currentLogoNote.style.display = 'none';
+  }
+
+  cancelEditBtn.addEventListener('click', exitEditMode);
+
+  // ---------- SALVA / AGGIORNA BRAND ----------
   document.getElementById('saveBrandBtn').addEventListener('click', async () => {
     const name = document.getElementById('brandName').value.trim();
     const city = document.getElementById('brandCity').value.trim();
@@ -312,29 +373,48 @@
     msg.style.color = 'rgba(244,242,237,0.6)';
     msg.textContent = 'Salvataggio...';
 
-    const slug = slugify(name) + '-' + Math.random().toString(36).slice(2,6);
+    const isEditing = !!editingBrandId;
+    const slugForUpload = isEditing ? editingBrandSlug : (slugify(name) + '-' + Math.random().toString(36).slice(2,6));
 
     try {
-      let logo_url = null;
+      let logo_url = undefined; // undefined = non toccare il campo in update mode
 
       if(logoInput.files.length > 0){
         const file = logoInput.files[0];
-        const path = `logos/${slug}-${Date.now()}-${file.name}`;
+        const path = `logos/${slugForUpload}-${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabaseClient.storage.from('brand-images').upload(path, file);
         if(uploadError) throw uploadError;
         const { data: urlData } = supabaseClient.storage.from('brand-images').getPublicUrl(path);
         logo_url = urlData.publicUrl;
+
+        // Se stavamo sostituendo un logo esistente, elimina il vecchio file
+        if(isEditing && editingBrandLogoUrl){
+          await removeStorageFiles([editingBrandLogoUrl]);
+        }
       }
 
-      const { error } = await supabaseClient.from('brands').insert({
-        name, city, category, status, story, shop_url, instagram_url, slug, logo_url
-      });
-      if(error) throw error;
+      if(isEditing){
+        const payload = { name, city, category, status, story, shop_url, instagram_url };
+        if(logo_url !== undefined) payload.logo_url = logo_url;
 
-      msg.style.color = 'var(--gold)';
-      msg.textContent = 'Brand salvato!';
-      ['brandName','brandCity','brandCategory','brandStory','brandShop','brandInstagram'].forEach(id => document.getElementById(id).value = '');
-      logoInput.value = '';
+        const { error } = await supabaseClient.from('brands').update(payload).eq('id', editingBrandId);
+        if(error) throw error;
+
+        msg.style.color = 'var(--gold)';
+        msg.textContent = 'Brand aggiornato!';
+        exitEditMode();
+      } else {
+        const { error } = await supabaseClient.from('brands').insert({
+          name, city, category, status, story, shop_url, instagram_url, slug: slugForUpload, logo_url: logo_url || null
+        });
+        if(error) throw error;
+
+        msg.style.color = 'var(--gold)';
+        msg.textContent = 'Brand salvato!';
+        ['brandName','brandCity','brandCategory','brandStory','brandShop','brandInstagram'].forEach(id => document.getElementById(id).value = '');
+        logoInput.value = '';
+      }
+
       loadBrands();
     } catch(err){
       msg.style.color = 'var(--coral)';
@@ -357,7 +437,7 @@
       const logoCell = brand.logo_url
         ? `<img src="${brand.logo_url}" alt="${brand.name}" style="width:36px;height:36px;object-fit:contain;border-radius:8px;background:var(--ink);padding:4px;">`
         : '—';
-      tr.innerHTML = `<td>${logoCell}</td><td>${brand.name}</td><td>${brand.city || '—'}</td><td><span class="badge ${brand.status}">${brand.status}</span></td><td><button class="delete-btn" data-id="${brand.id}" data-name="${brand.name.replace(/"/g,'&quot;')}">Elimina</button></td>`;
+      tr.innerHTML = `<td>${logoCell}</td><td>${brand.name}</td><td>${brand.city || '—'}</td><td><span class="badge ${brand.status}">${brand.status}</span></td><td style="display:flex;gap:8px;"><button class="edit-btn" data-brand='${JSON.stringify(brand).replace(/'/g,"&apos;")}'>Modifica</button><button class="delete-btn" data-id="${brand.id}" data-name="${brand.name.replace(/"/g,'&quot;')}">Elimina</button></td>`;
       tbody.appendChild(tr);
 
       const opt = document.createElement('option');
@@ -367,8 +447,15 @@
     });
   }
 
-  // ---------- ELIMINA BRAND ----------
+  // ---------- MODIFICA / ELIMINA BRAND ----------
   document.getElementById('brandsTableBody').addEventListener('click', async (e) => {
+    const editBtn = e.target.closest('.edit-btn');
+    if(editBtn){
+      const brand = JSON.parse(editBtn.dataset.brand.replace(/&apos;/g, "'"));
+      enterEditMode(brand);
+      return;
+    }
+
     const btn = e.target.closest('.delete-btn');
     if(!btn) return;
 
@@ -395,6 +482,8 @@
 
       const { error } = await supabaseClient.from('brands').delete().eq('id', id);
       if(error) throw error;
+
+      if(editingBrandId === id) exitEditMode();
 
       loadBrands();
       loadProducts();
