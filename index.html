@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emergo — Brand italiani emergenti</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root{
+    --ink:#0e0e12;
+    --surface:#17171d;
+    --surface-2:#1f1f27;
+    --paper:#f4f2ed;
+    --coral:#ff4d6d;
+    --indigo:#3d5aff;
+    --gold:#e8b94d;
+    --line: rgba(244,242,237,0.12);
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box;}
+
+  html{scroll-behavior:smooth;}
+
+  body{
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'Space Grotesk', sans-serif;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.72rem;
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+    color:var(--coral);
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+  }
+  .eyebrow::before{
+    content:'';
+    width:6px;height:6px;border-radius:50%;
+    background:var(--coral);
+    box-shadow:0 0 12px var(--coral);
+  }
+
+  a{color:inherit;text-decoration:none;}
+
+  /* ---------- NAV ---------- */
+  nav{
+    position:fixed;top:0;left:0;right:0;
+    display:flex;justify-content:space-between;align-items:center;
+    padding:24px 6vw;
+    z-index:100;
+    backdrop-filter: blur(10px);
+    background:rgba(14,14,18,0.55);
+    border-bottom:1px solid var(--line);
+  }
+  .logo{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:1.6rem;
+    letter-spacing:0.03em;
+  }
+  .nav-cta{
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.75rem;
+    letter-spacing:0.05em;
+    border:1px solid var(--paper);
+    padding:9px 18px;
+    border-radius:100px;
+    transition: all .25s ease;
+  }
+  .nav-cta:hover{background:var(--paper);color:var(--ink);}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;
+    min-height:100vh;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:120px 6vw 60px;
+    overflow:hidden;
+  }
+
+  .blob{
+    position:absolute;
+    width:640px;height:640px;
+    border-radius:50%;
+    background:radial-gradient(circle, rgba(61,90,255,0.35), rgba(255,77,109,0.18) 45%, transparent 70%);
+    filter:blur(40px);
+    pointer-events:none;
+    top:-100px; left:50%;
+    transform:translate(-50%,0);
+    transition: transform 0.4s cubic-bezier(.2,.8,.2,1);
+    z-index:0;
+  }
+
+  .hero-content{position:relative;z-index:2;}
+
+  .hero h1{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:clamp(4.2rem, 15vw, 11rem);
+    line-height:0.85;
+    letter-spacing:0.01em;
+    margin:18px 0 24px;
+  }
+  .hero h1 span{
+    display:inline-block;
+    opacity:0;
+    transform:translateY(40px);
+    animation:riseUp 0.9s cubic-bezier(.2,.8,.2,1) forwards;
+  }
+
+  @keyframes riseUp{
+    to{opacity:1;transform:translateY(0);}
+  }
+
+  .hero-sub{
+    font-size:clamp(1.05rem,2.4vw,1.4rem);
+    max-width:560px;
+    color:rgba(244,242,237,0.78);
+    font-weight:400;
+    margin-bottom:40px;
+    opacity:0;
+    animation:fadeIn 1s ease 0.7s forwards;
+  }
+
+  @keyframes fadeIn{to{opacity:1;}}
+
+  .hero-actions{
+    display:flex;gap:16px;flex-wrap:wrap;
+    opacity:0;
+    animation:fadeIn 1s ease 0.9s forwards;
+  }
+
+  .btn{
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.82rem;
+    letter-spacing:0.03em;
+    padding:16px 28px;
+    border-radius:100px;
+    transition: all .3s cubic-bezier(.2,.8,.2,1);
+    display:inline-flex;align-items:center;gap:10px;
+  }
+  .btn-primary{
+    background:var(--paper);color:var(--ink);
+  }
+  .btn-primary:hover{
+    background:var(--coral);color:var(--paper);
+    transform:translateY(-3px);
+  }
+  .btn-ghost{
+    border:1px solid var(--line);
+  }
+  .btn-ghost:hover{
+    border-color:var(--paper);
+    transform:translateY(-3px);
+  }
+
+  /* ---------- MARQUEE ---------- */
+  .marquee-wrap{
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    overflow:hidden;
+    padding:18px 0;
+    background:var(--surface);
+    white-space:nowrap;
+  }
+  .marquee{
+    display:inline-flex;
+    animation:scroll 26s linear infinite;
+  }
+  .marquee span{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:1.4rem;
+    letter-spacing:0.04em;
+    padding:0 28px;
+    color:rgba(244,242,237,0.55);
+    display:flex;align-items:center;gap:28px;
+  }
+  .marquee span::after{content:'/';color:var(--coral);}
+  @keyframes scroll{
+    from{transform:translateX(0);}
+    to{transform:translateX(-50%);}
+  }
+
+  /* ---------- SECTION GENERIC ---------- */
+  section{padding:120px 6vw;position:relative;}
+  .section-head{
+    max-width:640px;
+    margin-bottom:64px;
+  }
+  .section-head h2{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:clamp(2.4rem,5vw,4rem);
+    line-height:0.95;
+    margin-top:14px;
+  }
+  .section-head p{
+    color:rgba(244,242,237,0.7);
+    font-size:1.05rem;
+    margin-top:18px;
+    line-height:1.6;
+  }
+
+  .reveal{
+    opacity:0;
+    transform:translateY(32px);
+    transition: opacity .8s cubic-bezier(.2,.8,.2,1), transform .8s cubic-bezier(.2,.8,.2,1);
+  }
+  .reveal.visible{opacity:1;transform:translateY(0);}
+
+  /* ---------- BRAND GRID ---------- */
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(260px,1fr));
+    gap:24px;
+    perspective:1200px;
+  }
+
+  .card{
+    background:linear-gradient(160deg, var(--surface-2), var(--surface));
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:28px;
+    height:340px;
+    display:flex;flex-direction:column;justify-content:space-between;
+    position:relative;
+    transform-style:preserve-3d;
+    transition: transform .15s ease-out, border-color .3s ease;
+    cursor:pointer;
+    overflow:hidden;
+  }
+  .card:hover{border-color:rgba(244,242,237,0.35);}
+
+  .card::before{
+    content:'';
+    position:absolute;inset:0;
+    background:radial-gradient(500px circle at var(--mx,50%) var(--my,50%), rgba(255,77,109,0.15), transparent 60%);
+    opacity:0;
+    transition:opacity .3s ease;
+    pointer-events:none;
+  }
+  .card:hover::before{opacity:1;}
+
+  .card .drop{
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.7rem;
+    letter-spacing:0.1em;
+    color:var(--gold);
+  }
+  .card h3{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:2.4rem;
+    letter-spacing:0.01em;
+    line-height:1;
+  }
+  .card p{
+    font-size:0.88rem;
+    color:rgba(244,242,237,0.6);
+    line-height:1.5;
+  }
+  .card .tag{
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.7rem;
+    color:rgba(244,242,237,0.45);
+    border-top:1px solid var(--line);
+    padding-top:14px;
+    display:flex;justify-content:space-between;
+  }
+
+  /* ---------- FOR BRANDS ---------- */
+  .brand-section{
+    background:var(--surface);
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+  }
+  .price-card{
+    background:var(--ink);
+    border:1px solid var(--line);
+    border-radius:24px;
+    padding:48px;
+    max-width:520px;
+  }
+  .price{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:5rem;
+    line-height:1;
+    display:flex;align-items:flex-end;gap:10px;
+    margin:12px 0 28px;
+  }
+  .price small{
+    font-family:'JetBrains Mono', monospace;
+    font-size:1rem;
+    color:rgba(244,242,237,0.5);
+    padding-bottom:10px;
+  }
+  .feature-list{list-style:none;}
+  .feature-list li{
+    display:flex;gap:12px;align-items:flex-start;
+    padding:12px 0;
+    border-top:1px solid var(--line);
+    font-size:0.95rem;
+    color:rgba(244,242,237,0.85);
+  }
+  .feature-list li:first-child{border-top:none;}
+  .feature-list li::before{
+    content:'→';
+    color:var(--coral);
+    font-family:'JetBrains Mono', monospace;
+  }
+
+  /* ---------- WAITLIST ---------- */
+  .waitlist{
+    text-align:center;
+  }
+  .waitlist .section-head{margin-left:auto;margin-right:auto;text-align:center;}
+  .toggle{
+    display:inline-flex;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:100px;
+    padding:5px;
+    margin-bottom:32px;
+  }
+  .toggle button{
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.8rem;
+    padding:11px 22px;
+    border-radius:100px;
+    color:rgba(244,242,237,0.6);
+    transition:all .25s ease;
+  }
+  .toggle button.active{
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .form-row{
+    display:flex;gap:12px;max-width:480px;margin:0 auto;flex-wrap:wrap;justify-content:center;
+  }
+  .form-row input{
+    flex:1;min-width:220px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:100px;
+    padding:16px 22px;
+    color:var(--paper);
+    font-family:'Space Grotesk', sans-serif;
+    font-size:0.95rem;
+  }
+  .form-row input:focus{outline:2px solid var(--indigo);outline-offset:2px;}
+  .form-row input::placeholder{color:rgba(244,242,237,0.4);}
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    padding:60px 6vw 40px;
+    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;
+    border-top:1px solid var(--line);
+  }
+  footer .logo{font-size:1.3rem;}
+  .foot-links{
+    display:flex;gap:24px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:0.78rem;
+    color:rgba(244,242,237,0.55);
+  }
+  .foot-links a:hover{color:var(--coral);}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important;transition:none !important;}
+  }
+
+  @media (max-width:640px){
+    section{padding:80px 6vw;}
+    .price-card{padding:32px;}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">EMERGO</div>
+  <a href="#waitlist" class="nav-cta">Entra in vetrina</a>
+</nav>
+
+<header class="hero">
+  <div class="blob" id="blob"></div>
+  <div class="hero-content">
+    <span class="eyebrow">Made in Italia · Moda emergente</span>
+    <h1>
+      <span style="animation-delay:.05s">EMERGO</span>
+    </h1>
+    <p class="hero-sub">I brand italiani che devi scoprire prima che li conoscano tutti. Zero algoritmo, zero sponsorizzate a caso: solo pezzi nuovi e chi li fa davvero.</p>
+    <div class="hero-actions">
+      <a href="#griglia" class="btn btn-primary">Scopri i brand</a>
+      <a href="#per-brand" class="btn btn-ghost">Sei un brand? Entra tu</a>
+    </div>
+  </div>
+</header>
+
+<div class="marquee-wrap">
+  <div class="marquee" id="marquee">
+    <span>NERO STUDIO</span><span>FILO</span><span>OSSO</span><span>ALBA WORKSHOP</span><span>CALLE</span><span>TERRA°</span><span>SEDICI</span><span>VESPRO</span>
+    <span>NERO STUDIO</span><span>FILO</span><span>OSSO</span><span>ALBA WORKSHOP</span><span>CALLE</span><span>TERRA°</span><span>SEDICI</span><span>VESPRO</span>
+  </div>
+</div>
+
+<section id="cos-e">
+  <div class="section-head reveal">
+    <span class="eyebrow">Cos'è</span>
+    <h2>Una vetrina, non un feed infinito.</h2>
+    <p>Su Instagram i brand nuovi si perdono in mezzo a tutto il resto. Qui no. Emergo è lo spazio dove li trovi subito, senza scrollare all'infinito — con la storia di chi li ha fatti e il link per comprarli.</p>
+  </div>
+</section>
+
+<section id="griglia">
+  <div class="section-head reveal">
+    <span class="eyebrow">In vetrina questa settimana</span>
+    <h2>Nuovi drop, prima che li trovi altrove.</h2>
+  </div>
+  <div class="grid reveal" id="cardGrid">
+    <div class="card" data-tilt>
+      <span class="drop">DROP 01</span>
+      <h3>NERO STUDIO</h3>
+      <p>Capispalla essenziali, tagli netti. Milano.</p>
+      <div class="tag"><span>Streetwear</span><span>Nuovo</span></div>
+    </div>
+    <div class="card" data-tilt>
+      <span class="drop">DROP 02</span>
+      <h3>ALBA WORKSHOP</h3>
+      <p>Maglieria fatta a mano, piccoli lotti. Firenze.</p>
+      <div class="tag"><span>Knitwear</span><span>Limited</span></div>
+    </div>
+    <div class="card" data-tilt>
+      <span class="drop">DROP 03</span>
+      <h3>OSSO</h3>
+      <p>Denim riciclato, silhouette oversize. Napoli.</p>
+      <div class="tag"><span>Denim</span><span>Eco</span></div>
+    </div>
+    <div class="card" data-tilt>
+      <span class="drop">DROP 04</span>
+      <h3>VESPRO</h3>
+      <p>Camicie sartoriali reinventate. Bologna.</p>
+      <div class="tag"><span>Camiceria</span><span>Nuovo</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="per-brand" class="brand-section">
+  <div class="section-head reveal">
+    <span class="eyebrow">Per i brand</span>
+    <h2>Entra in vetrina quando vuoi tu.</h2>
+    <p>Niente contratti, niente impegni mensili. Attivi la tua vetrina anche solo per il weekend del lancio, o per tutto il mese — decidi tu quanto restare.</p>
+  </div>
+  <div class="price-card reveal">
+    <span class="eyebrow">Quota giornaliera</span>
+    <p style="font-size:1.15rem; color:rgba(244,242,237,0.85); line-height:1.6; margin:14px 0 28px;">Scrivici e ti mandiamo i dettagli su prezzo e disponibilità — nessun impegno.</p>
+    <ul class="feature-list">
+      <li>Scheda brand con foto, storia e link diretto al tuo shop</li>
+      <li>Presenza in griglia homepage per tutta la durata</li>
+      <li>Post di lancio sui canali social di Emergo</li>
+      <li>Badge "Featured on Emergo" da usare ovunque</li>
+    </ul>
+    <a href="#waitlist" class="btn btn-primary" style="margin-top:28px;">Richiedi info</a>
+  </div>
+</section>
+
+<section id="waitlist" class="waitlist">
+  <div class="section-head reveal">
+    <span class="eyebrow">Presto online</span>
+    <h2>Preparati a Emergere.</h2>
+    <p>Le iscrizioni aprono a breve. Lascia la tua email e sarai tra i primi ad entrare — brand o no.</p>
+  </div>
+  <div class="reveal">
+    <div class="toggle">
+      <button class="active" data-target="utente">Sono un utente</button>
+      <button data-target="brand">Sono un brand</button>
+    </div>
+    <div class="form-row">
+      <input type="email" id="waitlistEmail" placeholder="tuamail@esempio.it">
+      <a href="#" class="btn btn-primary" id="waitlistSubmit">Iscrivimi</a>
+    </div>
+    <p id="waitlistFeedback" style="margin-top:16px; font-size:0.85rem; font-family:'JetBrains Mono', monospace; min-height:20px;"></p>
+  </div>
+</section>
+
+<footer>
+  <div class="logo">EMERGO</div>
+  <div class="foot-links">
+    <a href="#">Instagram</a>
+    <a href="#">TikTok</a>
+    <a href="#">Contatti</a>
+  </div>
+</footer>
+
+<script>
+  // Hero blob follows cursor
+  const blob = document.getElementById('blob');
+  window.addEventListener('mousemove', (e) => {
+    const x = (e.clientX / window.innerWidth - 0.5) * 60;
+    const y = (e.clientY / window.innerHeight - 0.5) * 60;
+    blob.style.transform = `translate(calc(-50% + ${x}px), ${y}px)`;
+  });
+
+  // Card 3D tilt
+  document.querySelectorAll('[data-tilt]').forEach(card => {
+    card.addEventListener('mousemove', (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+      const rotateX = ((y - cy) / cy) * -8;
+      const rotateY = ((x - cx) / cx) * 8;
+      card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(10px)`;
+      card.style.setProperty('--mx', `${(x/rect.width)*100}%`);
+      card.style.setProperty('--my', `${(y/rect.height)*100}%`);
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = 'rotateX(0) rotateY(0) translateZ(0)';
+    });
+  });
+
+  // Scroll reveal
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if(entry.isIntersecting){
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // Connessione a Supabase (database reale di Emergo)
+  const SUPABASE_URL = 'https://wuvtvcxneilbcfxauzeq.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_u5W20O0Amb-qANK5bYppSg_O_zvIecL';
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Waitlist toggle
+  let currentType = 'utente';
+  document.querySelectorAll('.toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.toggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentType = btn.dataset.target;
+    });
+  });
+
+  // Waitlist submit — salva davvero l'iscrizione nel database
+  const emailInput = document.getElementById('waitlistEmail');
+  const submitBtn = document.getElementById('waitlistSubmit');
+  const feedback = document.getElementById('waitlistFeedback');
+
+  function isValidEmail(value){
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  }
+
+  submitBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const email = emailInput.value.trim();
+
+    if(!isValidEmail(email)){
+      feedback.style.color = 'var(--coral)';
+      feedback.textContent = 'Inserisci un\'email valida.';
+      return;
+    }
+
+    submitBtn.style.pointerEvents = 'none';
+    submitBtn.style.opacity = '0.6';
+    feedback.style.color = 'rgba(244,242,237,0.6)';
+    feedback.textContent = 'Invio in corso...';
+
+    try {
+      const { error } = await supabaseClient
+        .from('waitlist')
+        .insert({ email, type: currentType });
+
+      if(error){
+        if(error.code === '23505'){
+          feedback.style.color = 'var(--gold)';
+          feedback.textContent = 'Questa email è già iscritta — ci sei già dentro!';
+        } else {
+          throw error;
+        }
+      } else {
+        feedback.style.color = 'var(--gold)';
+        feedback.textContent = `Fatto! Ti scriviamo appena apriamo${currentType === 'brand' ? ' le iscrizioni brand' : ''}.`;
+        emailInput.value = '';
+      }
+    } catch (err) {
+      feedback.style.color = 'var(--coral)';
+      feedback.textContent = 'Qualcosa è andato storto, riprova tra poco.';
+    } finally {
+      submitBtn.style.pointerEvents = 'auto';
+      submitBtn.style.opacity = '1';
+    }
+  });
+</script>
+
+</body>
+</html>
