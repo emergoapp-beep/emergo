@@ -679,8 +679,70 @@
   }
 
   @media (max-width:640px){
-    section{padding:80px 6vw;}
-    .price-card{padding:32px;}
+    /* Nav più compatta */
+    nav{padding:16px 5vw;}
+    .nav-cta{padding:8px 14px;font-size:0.72rem;}
+    #menuToggle{width:38px;height:38px;}
+
+    /* Sezioni con meno respiro laterale */
+    section{padding:60px 6vw;}
+
+    /* Hero: bottoni impilati e a piena larghezza */
+    .hero{padding:100px 6vw 50px;}
+    .hero-actions{flex-direction:column;}
+    .hero-actions .btn{width:100%;justify-content:center;}
+    .blob{width:420px;height:420px;top:-60px;}
+
+    /* Marquee leggermente più piccolo */
+    .marquee span{font-size:1.1rem;padding:0 18px;}
+
+    /* Griglia brand: una colonna piena */
+    .grid{grid-template-columns:1fr;}
+    .filter-bar{gap:8px;}
+    .filter-pill{padding:8px 14px;font-size:0.7rem;}
+
+    /* Carosello ultimi arrivi: card leggermente più strette */
+    .latest-card{width:190px;}
+    .latest-card-img-wrap{height:190px;}
+    .latest-scroll{margin:0 -6vw;padding:0 6vw;}
+
+    /* Modal brand: meno padding, si adatta meglio allo schermo */
+    .modal-overlay{padding:20px 4vw;}
+    .modal-box{padding:24px;border-radius:18px;}
+    .modal-header{gap:14px;}
+    .modal-header h2{font-size:1.9rem;}
+    .modal-links{flex-direction:column;}
+    .modal-links .btn{width:100%;justify-content:center;}
+    .drops-grid{grid-template-columns:repeat(2, 1fr);gap:10px;}
+
+    /* Lightbox: occupa quasi tutto lo schermo */
+    .lightbox-overlay{padding:16px;}
+    .lightbox-close{top:-42px;}
+
+    /* Menu laterale: quasi a piena larghezza */
+    .side-menu{width:92vw;padding:28px 22px 50px;}
+    .side-menu-block h3{font-size:1.5rem;}
+    .side-menu-form{flex-direction:column;}
+    .side-menu-form button{width:100%;}
+
+    /* Waitlist: form impilato */
+    .form-row{flex-direction:column;align-items:stretch;}
+    .form-row .btn{width:100%;justify-content:center;}
+    .toggle{width:100%;}
+    .toggle button{flex:1;}
+
+    /* Footer impilato */
+    footer{flex-direction:column;align-items:flex-start;gap:16px;}
+    .foot-links{flex-wrap:wrap;gap:14px 20px;}
+
+    /* Cookie bar impilata */
+    .cookie-bar{flex-direction:column;align-items:flex-start;padding:16px 6vw;}
+    .cookie-bar button{width:100%;}
+  }
+
+  @media (max-width:400px){
+    .hero h1{font-size:3.6rem;}
+    .drops-grid{grid-template-columns:1fr 1fr;}
   }
 </style>
 </head>

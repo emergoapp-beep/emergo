@@ -88,9 +88,23 @@
     padding:32px;margin-bottom:40px;
   }
   .row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-  @media(max-width:640px){.row{grid-template-columns:1fr;}}
+  @media(max-width:640px){
+    .row{grid-template-columns:1fr;}
+    header{padding:16px 5vw;}
+    #dashboard{padding:24px 5vw;}
+    .panel{padding:22px;}
+    .section-title{font-size:1.6rem;}
+    button.primary, button.secondary{width:100%;margin-left:0;}
+    button.secondary{margin-top:10px;}
+    .row-actions{flex-direction:column;}
+    .icon-btn{width:100%;}
+    .editor-box{padding:20px;}
+    .zoom-row{gap:8px;}
+  }
 
-  table{width:100%;border-collapse:collapse;margin-top:10px;}
+
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table{width:100%;border-collapse:collapse;margin-top:10px;min-width:520px;}
   th, td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);font-size:0.88rem;vertical-align:middle;}
   th{font-family:'JetBrains Mono', monospace;font-size:0.7rem;text-transform:uppercase;color:rgba(244,242,237,0.5);}
   .badge{
@@ -147,6 +161,8 @@
     border-radius:12px;cursor:grab;
     border:1px solid var(--line);
     background:#fff;
+    max-width:100%;
+    height:auto;
   }
   .editor-canvas-wrap canvas:active{cursor:grabbing;}
   .zoom-row{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
@@ -289,22 +305,26 @@
 
   <div class="panel">
     <div class="section-title">I tuoi brand</div>
-    <table id="brandsTable">
-      <thead>
-        <tr><th>Nome</th><th>Città</th><th>Stato</th><th>Scade il</th><th></th></tr>
-      </thead>
-      <tbody id="brandsTableBody"></tbody>
-    </table>
+    <div class="table-scroll">
+      <table id="brandsTable">
+        <thead>
+          <tr><th>Nome</th><th>Città</th><th>Stato</th><th>Scade il</th><th></th></tr>
+        </thead>
+        <tbody id="brandsTableBody"></tbody>
+      </table>
+    </div>
   </div>
 
   <div class="panel">
     <div class="section-title">I tuoi prodotti</div>
-    <table id="productsTable">
-      <thead>
-        <tr><th>Foto</th><th>Brand</th><th>Prodotto</th><th>Prezzo</th><th></th></tr>
-      </thead>
-      <tbody id="productsTableBody"></tbody>
-    </table>
+    <div class="table-scroll">
+      <table id="productsTable">
+        <thead>
+          <tr><th>Foto</th><th>Brand</th><th>Prodotto</th><th>Prezzo</th><th></th></tr>
+        </thead>
+        <tbody id="productsTableBody"></tbody>
+      </table>
+    </div>
   </div>
 
 </div>
