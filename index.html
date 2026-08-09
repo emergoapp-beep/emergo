@@ -145,6 +145,9 @@
     border-radius:100px;
     transition: all .3s cubic-bezier(.2,.8,.2,1);
     display:inline-flex;align-items:center;gap:10px;
+    cursor:pointer;
+    background:none;
+    color:var(--paper);
   }
   .btn-primary{
     background:var(--paper);color:var(--ink);
@@ -160,6 +163,100 @@
     border-color:var(--paper);
     transform:translateY(-3px);
   }
+
+  /* ---------- HAMBURGER MENU BUTTON ---------- */
+  #menuToggle{
+    width:42px;height:42px;
+    border-radius:50%;
+    border:1px solid var(--line);
+    background:none;
+    cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:5px;
+    transition:border-color .25s ease;
+  }
+  #menuToggle:hover{border-color:var(--paper);}
+  #menuToggle span{
+    display:block;width:16px;height:1.5px;
+    background:var(--paper);
+    transition: transform .3s ease, opacity .3s ease;
+  }
+  #menuToggle.open span:nth-child(1){transform:translateY(6.5px) rotate(45deg);}
+  #menuToggle.open span:nth-child(2){opacity:0;}
+  #menuToggle.open span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg);}
+
+  /* ---------- SIDE MENU PANEL ---------- */
+  .menu-backdrop{
+    position:fixed;inset:0;
+    background:rgba(0,0,0,0.6);
+    backdrop-filter:blur(4px);
+    z-index:150;
+    opacity:0;pointer-events:none;
+    transition:opacity .35s ease;
+  }
+  .menu-backdrop.open{opacity:1;pointer-events:auto;}
+
+  .side-menu{
+    position:fixed;top:0;right:0;bottom:0;
+    width:min(420px, 88vw);
+    background:var(--surface);
+    border-left:1px solid var(--line);
+    z-index:160;
+    transform:translateX(100%);
+    transition:transform .4s cubic-bezier(.2,.8,.2,1);
+    overflow-y:auto;
+    padding:36px 32px 60px;
+  }
+  .side-menu.open{transform:translateX(0);}
+
+  .side-menu-close{
+    width:36px;height:36px;border-radius:50%;
+    background:var(--surface-2);border:1px solid var(--line);
+    color:var(--paper);font-size:1.1rem;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    margin-bottom:36px;
+  }
+  .side-menu-close:hover{background:var(--coral);}
+
+  .side-menu-block{
+    padding-bottom:32px;margin-bottom:32px;
+    border-bottom:1px solid var(--line);
+  }
+  .side-menu-block:last-child{border-bottom:none;}
+  .side-menu-block .eyebrow{margin-bottom:10px;}
+  .side-menu-block h3{
+    font-family:'Bebas Neue', sans-serif;
+    font-size:1.8rem;
+    margin-bottom:12px;
+  }
+  .side-menu-block p{
+    color:rgba(244,242,237,0.7);
+    font-size:0.92rem;
+    line-height:1.6;
+    margin-bottom:16px;
+  }
+  .side-menu-block .feature-list li{font-size:0.88rem;}
+  .side-menu-form{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+  .side-menu-form input{
+    flex:1;min-width:150px;
+    background:var(--ink);border:1px solid var(--line);border-radius:100px;
+    padding:12px 18px;color:var(--paper);font-family:'Space Grotesk', sans-serif;font-size:0.88rem;
+  }
+  .side-menu-form input:focus{outline:2px solid var(--indigo);outline-offset:1px;}
+  .side-menu-form button{
+    font-family:'JetBrains Mono', monospace;font-size:0.78rem;
+    background:var(--paper);color:var(--ink);border:none;border-radius:100px;
+    padding:12px 20px;cursor:pointer;transition:all .25s ease;
+  }
+  .side-menu-form button:hover{background:var(--coral);color:var(--paper);}
+  .side-menu-contacts{display:flex;flex-direction:column;gap:10px;}
+  .side-menu-contacts a{
+    display:flex;align-items:center;gap:10px;
+    font-size:0.92rem;color:var(--paper);
+    padding:10px 0;
+  }
+  .side-menu-contacts a:hover{color:var(--coral);}
+  .side-menu-msg{margin-top:10px;font-size:0.8rem;font-family:'JetBrains Mono', monospace;min-height:16px;}
 
   /* ---------- MARQUEE ---------- */
   .marquee-wrap{
@@ -521,9 +618,53 @@
 </head>
 <body>
 
+<div class="menu-backdrop" id="menuBackdrop"></div>
+<div class="side-menu" id="sideMenu">
+  <button class="side-menu-close" id="sideMenuClose">✕</button>
+
+  <div class="side-menu-block">
+    <span class="eyebrow">Per i brand</span>
+    <h3>Entra in vetrina quando vuoi tu.</h3>
+    <p>Niente contratti, niente impegni mensili. Attivi la tua vetrina anche solo per il weekend del lancio, o per tutto il mese — decidi tu quanto restare.</p>
+    <ul class="feature-list">
+      <li>Scheda brand con foto, storia e link diretto al tuo shop</li>
+      <li>Presenza in griglia homepage per tutta la durata</li>
+      <li>Post di lancio sui canali social di Emergo</li>
+      <li>Badge "Featured on Emergo" da usare ovunque</li>
+    </ul>
+    <a href="#waitlist" class="btn btn-primary" id="sideMenuBrandCta" style="margin-top:20px;">Richiedi info</a>
+  </div>
+
+  <div class="side-menu-block">
+    <span class="eyebrow">Newsletter</span>
+    <h3>Non perderti i nuovi drop.</h3>
+    <p>Un'email ogni tanto, solo quando arrivano brand nuovi davvero interessanti.</p>
+    <div class="side-menu-form">
+      <input type="email" id="newsletterEmail" placeholder="tuamail@esempio.it">
+      <button id="newsletterSubmit">Iscrivimi</button>
+    </div>
+    <p class="side-menu-msg" id="newsletterMsg"></p>
+  </div>
+
+  <div class="side-menu-block">
+    <span class="eyebrow">Contatti</span>
+    <h3>Parliamone.</h3>
+    <div class="side-menu-contacts">
+      <a href="mailto:ciao@emergo.app">✉️ ciao@emergo.app</a>
+      <a href="https://www.instagram.com/emergo2026" target="_blank" rel="noopener">Instagram → @emergo2026</a>
+      <a href="https://www.tiktok.com/@emergo.app" target="_blank" rel="noopener">TikTok → @emergo.app</a>
+    </div>
+  </div>
+</div>
+
 <nav>
   <div class="logo">EMERGO</div>
-  <a href="#waitlist" class="nav-cta">Entra in vetrina</a>
+  <div style="display:flex; align-items:center; gap:14px;">
+    <a href="#waitlist" class="nav-cta">Entra in vetrina</a>
+    <button id="menuToggle" aria-label="Apri menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
 </nav>
 
 <div class="lightbox-overlay" id="lightboxOverlay">
@@ -559,7 +700,7 @@
     <p class="hero-sub">I brand italiani che devi scoprire prima che li conoscano tutti. Zero algoritmo, zero sponsorizzate a caso: solo pezzi nuovi e chi li fa davvero.</p>
     <div class="hero-actions">
       <a href="#griglia" class="btn btn-primary">Scopri i brand</a>
-      <a href="#per-brand" class="btn btn-ghost">Sei un brand? Entra tu</a>
+      <button id="heroMenuOpen" class="btn btn-ghost">Sei un brand? Entra tu</button>
     </div>
   </div>
 </header>
@@ -596,25 +737,6 @@
   </div>
   <div class="latest-grid reveal visible" id="latestGrid">
     <p style="color:rgba(244,242,237,0.5); font-family:'JetBrains Mono', monospace; font-size:0.85rem;">Caricamento...</p>
-  </div>
-</section>
-
-<section id="per-brand" class="brand-section">
-  <div class="section-head reveal">
-    <span class="eyebrow">Per i brand</span>
-    <h2>Entra in vetrina quando vuoi tu.</h2>
-    <p>Niente contratti, niente impegni mensili. Attivi la tua vetrina anche solo per il weekend del lancio, o per tutto il mese — decidi tu quanto restare.</p>
-  </div>
-  <div class="price-card reveal">
-    <span class="eyebrow">Quota giornaliera</span>
-    <p style="font-size:1.15rem; color:rgba(244,242,237,0.85); line-height:1.6; margin:14px 0 28px;">Scrivici e ti mandiamo i dettagli su prezzo e disponibilità — nessun impegno.</p>
-    <ul class="feature-list">
-      <li>Scheda brand con foto, storia e link diretto al tuo shop</li>
-      <li>Presenza in griglia homepage per tutta la durata</li>
-      <li>Post di lancio sui canali social di Emergo</li>
-      <li>Badge "Featured on Emergo" da usare ovunque</li>
-    </ul>
-    <a href="#waitlist" class="btn btn-primary" style="margin-top:28px;">Richiedi info</a>
   </div>
 </section>
 
@@ -931,6 +1053,76 @@
 
   loadBrandGrid();
   loadLatestArrivals();
+
+  // ---------- SIDE MENU: apertura/chiusura ----------
+  const sideMenu = document.getElementById('sideMenu');
+  const menuBackdrop = document.getElementById('menuBackdrop');
+  const menuToggle = document.getElementById('menuToggle');
+
+  function openSideMenu(){
+    sideMenu.classList.add('open');
+    menuBackdrop.classList.add('open');
+    menuToggle.classList.add('open');
+  }
+  function closeSideMenu(){
+    sideMenu.classList.remove('open');
+    menuBackdrop.classList.remove('open');
+    menuToggle.classList.remove('open');
+  }
+
+  menuToggle.addEventListener('click', () => {
+    sideMenu.classList.contains('open') ? closeSideMenu() : openSideMenu();
+  });
+  document.getElementById('heroMenuOpen').addEventListener('click', openSideMenu);
+  document.getElementById('sideMenuClose').addEventListener('click', closeSideMenu);
+  menuBackdrop.addEventListener('click', closeSideMenu);
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape') closeSideMenu();
+  });
+
+  // Il pulsante "Richiedi info" nel menu porta alla waitlist con il toggle già su "brand"
+  document.getElementById('sideMenuBrandCta').addEventListener('click', () => {
+    closeSideMenu();
+    setTimeout(() => {
+      const brandToggleBtn = document.querySelector('.toggle button[data-target="brand"]');
+      if(brandToggleBtn) brandToggleBtn.click();
+    }, 300);
+  });
+
+  // ---------- NEWSLETTER (dentro il menu) ----------
+  document.getElementById('newsletterSubmit').addEventListener('click', async () => {
+    const input = document.getElementById('newsletterEmail');
+    const msg = document.getElementById('newsletterMsg');
+    const email = input.value.trim();
+
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+      msg.style.color = 'var(--coral)';
+      msg.textContent = 'Inserisci un\'email valida.';
+      return;
+    }
+
+    msg.style.color = 'rgba(244,242,237,0.6)';
+    msg.textContent = 'Invio in corso...';
+
+    try {
+      const { error } = await supabaseClient.from('waitlist').insert({ email, type: 'newsletter' });
+      if(error){
+        if(error.code === '23505'){
+          msg.style.color = 'var(--gold)';
+          msg.textContent = 'Sei già iscritto!';
+        } else {
+          throw error;
+        }
+      } else {
+        msg.style.color = 'var(--gold)';
+        msg.textContent = 'Fatto, ti scriviamo presto!';
+        input.value = '';
+      }
+    } catch(err){
+      msg.style.color = 'var(--coral)';
+      msg.textContent = 'Qualcosa è andato storto, riprova.';
+    }
+  });
 
   // Waitlist toggle
   let currentType = 'utente';
