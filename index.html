@@ -664,6 +664,16 @@
   const SUPABASE_KEY = 'sb_publishable_u5W20O0Amb-qANK5bYppSg_O_zvIecL';
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+  // ---------- ANALYTICS ----------
+  // Registra un evento (visita pagina o click su brand). Fallisce in silenzio:
+  // un errore di tracking non deve mai bloccare l'esperienza dell'utente.
+  function trackEvent(event_type, extra = {}){
+    supabaseClient.from('analytics_events').insert({ event_type, ...extra })
+      .then(({ error }) => { if(error) console.warn('Tracking non riuscito:', error.message); });
+  }
+
+  trackEvent('page_view', { page: location.pathname });
+
   // Applica l'effetto tilt 3D a una card (usato sia per quelle statiche che per quelle caricate)
   function applyTilt(card){
     card.addEventListener('mousemove', (e) => {
@@ -721,7 +731,10 @@
           <div class="tag"><span>${brand.category || 'Moda'}</span><span>Nuovo</span></div>
         </div>
       `;
-      card.addEventListener('click', () => openBrandModal(brand));
+      card.addEventListener('click', () => {
+        trackEvent('brand_click', { brand_id: brand.id, brand_name: brand.name });
+        openBrandModal(brand);
+      });
       grid.appendChild(card);
       applyTilt(card);
     });

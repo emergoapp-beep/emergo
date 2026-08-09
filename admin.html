@@ -110,6 +110,27 @@
     font-size:0.85rem;color:rgba(244,242,237,0.6);cursor:pointer;
   }
   .file-input-wrap:hover{border-color:var(--paper);}
+
+  .stats-row{
+    display:grid;grid-template-columns:repeat(auto-fit, minmax(160px,1fr));gap:16px;
+  }
+  .stat-card{
+    background:var(--ink);border:1px solid var(--line);border-radius:16px;
+    padding:20px;display:flex;flex-direction:column;gap:6px;
+  }
+  .stat-label{
+    font-family:'JetBrains Mono', monospace;font-size:0.68rem;
+    text-transform:uppercase;letter-spacing:0.05em;color:rgba(244,242,237,0.5);
+  }
+  .stat-value{font-family:'Bebas Neue', sans-serif;font-size:2.2rem;}
+
+  .filter-btn{
+    font-family:'JetBrains Mono', monospace;font-size:0.75rem;
+    border:1px solid var(--line);background:none;color:rgba(244,242,237,0.6);
+    padding:8px 16px;border-radius:100px;cursor:pointer;transition:all .2s ease;
+  }
+  .filter-btn.active{background:var(--paper);color:var(--ink);border-color:var(--paper);}
+  .filter-btn:hover:not(.active){border-color:var(--paper);}
 </style>
 </head>
 <body>
@@ -233,6 +254,57 @@
     </table>
   </div>
 
+  <div class="panel">
+    <div class="section-title">Newsletter</div>
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+      <button class="filter-btn active" data-filter="all">Tutti</button>
+      <button class="filter-btn" data-filter="utente">Utenti</button>
+      <button class="filter-btn" data-filter="brand">Brand</button>
+      <span id="waitlistCount" style="margin-left:auto;font-family:'JetBrains Mono', monospace;font-size:0.78rem;color:rgba(244,242,237,0.5);"></span>
+      <button id="exportWaitlistBtn" style="font-family:'JetBrains Mono', monospace;font-size:0.72rem;border:1px solid var(--line);background:none;color:var(--paper);padding:8px 16px;border-radius:100px;cursor:pointer;">Esporta CSV</button>
+    </div>
+    <table id="waitlistTable">
+      <thead>
+        <tr><th>Email</th><th>Tipo</th><th>Iscritto il</th><th>Azioni</th></tr>
+      </thead>
+      <tbody id="waitlistTableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <div class="section-title">Analytics</div>
+    <div class="stats-row">
+      <div class="stat-card">
+        <span class="stat-label">Visite totali</span>
+        <span class="stat-value" id="statTotalViews">—</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Visite oggi</span>
+        <span class="stat-value" id="statTodayViews">—</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Click sui brand</span>
+        <span class="stat-value" id="statTotalClicks">—</span>
+      </div>
+    </div>
+    <div class="row" style="margin-top:24px;align-items:start;">
+      <div>
+        <label style="margin-bottom:10px;">Brand più cliccati</label>
+        <table id="topBrandsTable">
+          <thead><tr><th>Brand</th><th>Click</th></tr></thead>
+          <tbody id="topBrandsTableBody"></tbody>
+        </table>
+      </div>
+      <div>
+        <label style="margin-bottom:10px;">Pagine più visitate</label>
+        <table id="topPagesTable">
+          <thead><tr><th>Pagina</th><th>Visite</th></tr></thead>
+          <tbody id="topPagesTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -305,6 +377,8 @@
     logoutBtn.style.display = 'inline-block';
     loadBrands();
     loadProducts();
+    loadWaitlist();
+    loadAnalytics();
   }
 
   // ---------- STATO MODIFICA BRAND ----------
@@ -667,6 +741,118 @@
       btn.textContent = 'Elimina';
     }
   });
+
+  // ---------- NEWSLETTER / WAITLIST ----------
+  let waitlistData = [];
+  let waitlistFilter = 'all';
+
+  async function loadWaitlist(){
+    const { data, error } = await supabaseClient
+      .from('waitlist')
+      .select('id, email, type, created_at')
+      .order('created_at', { ascending: false });
+    if(error) return;
+    waitlistData = data;
+    renderWaitlist();
+  }
+
+  function renderWaitlist(){
+    const tbody = document.getElementById('waitlistTableBody');
+    const countEl = document.getElementById('waitlistCount');
+    const filtered = waitlistFilter === 'all' ? waitlistData : waitlistData.filter(w => w.type === waitlistFilter);
+
+    countEl.textContent = `${filtered.length} iscritt${filtered.length === 1 ? 'o' : 'i'}`;
+    tbody.innerHTML = '';
+
+    filtered.forEach(entry => {
+      const tr = document.createElement('tr');
+      const date = new Date(entry.created_at).toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric' });
+      tr.innerHTML = `<td>${entry.email}</td><td><span class="badge ${entry.type === 'brand' ? 'active' : 'draft'}">${entry.type}</span></td><td>${date}</td><td><button class="delete-btn" data-id="${entry.id}" data-email="${entry.email}">Elimina</button></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      waitlistFilter = btn.dataset.filter;
+      renderWaitlist();
+    });
+  });
+
+  document.getElementById('waitlistTableBody').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.delete-btn');
+    if(!btn) return;
+
+    const id = btn.dataset.id;
+    const email = btn.dataset.email;
+
+    if(!confirm(`Rimuovere "${email}" dalla newsletter?`)) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Elimino...';
+
+    const { error } = await supabaseClient.from('waitlist').delete().eq('id', id);
+    if(error){
+      alert('Errore durante l\'eliminazione: ' + error.message);
+      btn.disabled = false;
+      btn.textContent = 'Elimina';
+    } else {
+      loadWaitlist();
+    }
+  });
+
+  document.getElementById('exportWaitlistBtn').addEventListener('click', () => {
+    if(waitlistData.length === 0) return;
+    const rows = [['email','tipo','iscritto_il'], ...waitlistData.map(w => [w.email, w.type, w.created_at])];
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `emergo-newsletter-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // ---------- ANALYTICS ----------
+  async function loadAnalytics(){
+    const { data, error } = await supabaseClient
+      .from('analytics_events')
+      .select('event_type, page, brand_name, created_at')
+      .order('created_at', { ascending: false })
+      .limit(5000);
+    if(error) return;
+
+    const pageViews = data.filter(e => e.event_type === 'page_view');
+    const brandClicks = data.filter(e => e.event_type === 'brand_click');
+
+    const todayStr = new Date().toDateString();
+    const todayViews = pageViews.filter(e => new Date(e.created_at).toDateString() === todayStr);
+
+    document.getElementById('statTotalViews').textContent = pageViews.length;
+    document.getElementById('statTodayViews').textContent = todayViews.length;
+    document.getElementById('statTotalClicks').textContent = brandClicks.length;
+
+    // Top pagine
+    const pageCounts = {};
+    pageViews.forEach(e => { const p = e.page || '(sconosciuta)'; pageCounts[p] = (pageCounts[p] || 0) + 1; });
+    const topPages = Object.entries(pageCounts).sort((a,b) => b[1] - a[1]).slice(0, 10);
+    const topPagesBody = document.getElementById('topPagesTableBody');
+    topPagesBody.innerHTML = topPages.length
+      ? topPages.map(([page, count]) => `<tr><td>${page}</td><td>${count}</td></tr>`).join('')
+      : `<tr><td colspan="2" style="color:rgba(244,242,237,0.5);">Nessun dato ancora.</td></tr>`;
+
+    // Top brand cliccati
+    const brandCounts = {};
+    brandClicks.forEach(e => { const b = e.brand_name || '(sconosciuto)'; brandCounts[b] = (brandCounts[b] || 0) + 1; });
+    const topBrands = Object.entries(brandCounts).sort((a,b) => b[1] - a[1]).slice(0, 10);
+    const topBrandsBody = document.getElementById('topBrandsTableBody');
+    topBrandsBody.innerHTML = topBrands.length
+      ? topBrands.map(([name, count]) => `<tr><td>${name}</td><td>${count}</td></tr>`).join('')
+      : `<tr><td colspan="2" style="color:rgba(244,242,237,0.5);">Nessun dato ancora.</td></tr>`;
+  }
 
   checkSession();
 </script>
